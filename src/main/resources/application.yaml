@@ -1,0 +1,15 @@
+server.port: 9000
+spring:
+  application.name: authentication
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/postgres
+    username: postgres
+    password: pgpass
+
+  mvc:
+    log-request-details: true
+logging:
+  level:
+    root: INFO
+    org.springframework.security: DEBUG

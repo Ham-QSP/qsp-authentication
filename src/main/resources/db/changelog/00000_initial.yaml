@@ -1,0 +1,130 @@
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>
+
+databaseChangeLog:
+- changeSet:
+    id:  1
+    author:  "Florian MAZEN"
+    changes:
+      - createTable:
+          tableName:  qsp_auth_users
+          columns:
+            - column:
+                name: id
+                type: uuid
+                defaultValueComputed: gen_random_uuid()
+                constraints:
+                  primaryKey:  true
+                  nullable: false
+            - column:
+                name: username
+                type: varchar(100)
+                constraints:
+                  unique: true
+                  nullable:  false
+            - column:
+                name: password
+                type: varchar(100)
+                constraints:
+                  nullable: false
+            - column:
+                name: password_expiration
+                type: timestamp
+                constraints:
+                  nullable: true
+            - column:
+                name: enabled
+                type: boolean
+                constraints:
+                  nullable: false
+            - column:
+                name: email
+                type: varchar(320)
+                constraints:
+                  unique: true
+                  nullable: false
+            - column:
+                name: email_validated
+                type: boolean
+                constraints:
+                  nullable: false
+      - createIndex:
+          columns:
+            - column:
+                name: email
+          indexName: ix_auth_users_email
+          tableName: qsp_auth_users
+          unique: true
+      - createIndex:
+          columns:
+            - column:
+                name: username
+          indexName: ix_auth_users_username
+          tableName: qsp_auth_users
+          unique: true
+
+      - createTable:
+          tableName:  qsp_auth_authorities
+          columns:
+            - column:
+                name: username
+                type: varchar(100)
+                constraints:
+                  nullable:  false
+                  foreignKeyName: fk_authorities_users
+                  references: qsp_auth_users(username)
+            - column:
+                name: authority
+                type: varchar(100)
+                constraints:
+                  nullable: false
+      - createIndex:
+          columns:
+            - column:
+                name: username
+            - column:
+                name: authority
+          indexName: ix_auth_authorities_username_authority
+          tableName: qsp_auth_authorities
+          unique: true
+- changeSet:
+    id:  2
+    author:  "Florian MAZEN"
+    changes:
+      - insert:
+          tableName: qsp_auth_users
+          columns:
+            - column:
+                name: username
+                value: 'admin'
+            - column:
+                name: password
+                value: '{bcrypt}$2a$10$3m9/SFvmC5iqrZ6gXBrhGOUQIkkMhHOC4E8c8yQK9USBraM.l/Dhu'
+            - column:
+                name: enabled
+                value: true
+            - column:
+                name: email
+                value: 'admin@localhost'
+            - column:
+                name: email_validated
+                value: true
+      - insert:
+          tableName: qsp_auth_authorities
+          columns:
+            - column:
+                name: username
+                value: 'admin'
+            - column:
+                name: authority
+                value: 'ROLE_ADMIN'

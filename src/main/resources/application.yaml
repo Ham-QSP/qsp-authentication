@@ -13,3 +13,9 @@ logging:
   level:
     root: INFO
     org.springframework.security: DEBUG
+
+qsp.authorization:
+  clients:
+    portal:
+      redirect-uri:
+        - "http://localhost"

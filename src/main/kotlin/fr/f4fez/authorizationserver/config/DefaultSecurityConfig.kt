@@ -5,6 +5,7 @@ import com.nimbusds.jose.proc.SecurityContext
 import fr.f4fez.authorizationserver.authorization.CustomRefreshTokenGenerator
 import fr.f4fez.authorizationserver.authorization.PublicClientRefreshTokenAuthenticationConverter
 import fr.f4fez.authorizationserver.authorization.PublicClientRefreshTokenAuthenticationProvider
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.Order
@@ -12,6 +13,7 @@ import org.springframework.http.MediaType
 import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.authority.AuthorityUtils
 import org.springframework.security.core.userdetails.UserDetailsService
@@ -25,30 +27,26 @@ import org.springframework.security.oauth2.server.authorization.OAuth2TokenType
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository
-import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings
-import org.springframework.security.oauth2.server.authorization.token.DelegatingOAuth2TokenGenerator
-import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext
-import org.springframework.security.oauth2.server.authorization.token.JwtGenerator
-import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer
-import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator
+import org.springframework.security.oauth2.server.authorization.token.*
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
-import java.util.Collections
-import java.util.UUID
+import java.util.*
 import java.util.function.Consumer
 import java.util.function.Function
 import java.util.stream.Collectors
 import javax.sql.DataSource
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
 @Configuration
+@EnableConfigurationProperties(ClientsProperties::class)
 @EnableWebSecurity
 class DefaultSecurityConfig {
 
@@ -63,27 +61,21 @@ class DefaultSecurityConfig {
     @Bean
     @Order(1)
     fun authorizationServerSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
-        val authorizationServerConfigurer =
-            OAuth2AuthorizationServerConfigurer.authorizationServer()
-        authorizationServerConfigurer
-            .clientAuthentication {
-                it
-                    .authenticationConverter(PublicClientRefreshTokenAuthenticationConverter())
-                    .authenticationProvider(PublicClientRefreshTokenAuthenticationProvider(registeredClientRepository()))
-            }
-
+        var authorizationServerConfigurer = OAuth2AuthorizationServerConfigurer()
+        authorizationServerConfigurer.clientAuthentication {
+            it
+                .authenticationConverter(PublicClientRefreshTokenAuthenticationConverter())
+                .authenticationProvider(PublicClientRefreshTokenAuthenticationProvider(registeredClientRepository()))
+        }
         http
-            .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
-            .with(authorizationServerConfigurer, { authorizationServer ->
-                authorizationServer
-                    .oidc(Customizer.withDefaults())
-            }
-            )
+            .securityMatcher(authorizationServerConfigurer.endpointsMatcher)
+            .with(
+                authorizationServerConfigurer,
+                { authorizationServer -> authorizationServer.oidc(Customizer.withDefaults()) })
             .authorizeHttpRequests({ authorize ->
                 authorize
                     .anyRequest().authenticated()
-            }
-            )
+            })
             .exceptionHandling({ exceptions ->
                 exceptions
                     .defaultAuthenticationEntryPointFor(
@@ -120,7 +112,7 @@ class DefaultSecurityConfig {
     }
 
     @Bean
-    fun corsConfigurationSource(): CorsConfigurationSource {
+    fun corsConfigurationSource(clientProperties: ClientsProperties): CorsConfigurationSource {
         val source = UrlBasedCorsConfigurationSource()
         val config = CorsConfiguration()
         config.addAllowedHeader("*");
@@ -143,8 +135,8 @@ class DefaultSecurityConfig {
     @Bean
     fun registeredClientRepository(): RegisteredClientRepository {
         val tokenSettings = TokenSettings.builder()
-            .accessTokenTimeToLive(10.minutes.toJavaDuration())
-            .refreshTokenTimeToLive(30.minutes.toJavaDuration())
+            .accessTokenTimeToLive(3.minutes.toJavaDuration())
+            .refreshTokenTimeToLive(60.minutes.toJavaDuration())
             .reuseRefreshTokens(false)
             .build()
         val oidcClient = RegisteredClient.withId(UUID.randomUUID().toString())

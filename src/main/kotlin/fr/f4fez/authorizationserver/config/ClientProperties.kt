@@ -17,13 +17,13 @@ package fr.f4fez.authorizationserver.config
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 
-@ConfigurationProperties(prefix = "qsp.authorization.clients")
-class ClientsProperties {
-    lateinit var portal: PortalClientProperties
+@ConfigurationProperties(prefix = "qsp.authorization")
+class AuthorizationProperties {
+    var clients: Map<String, ClientProperties> = emptyMap()
 }
 
-
-
-class PortalClientProperties {
-    lateinit var redirectUri: Array<String>
+class ClientProperties {
+    var redirectUri: List<String> = emptyList()
+    var accessTokenTimeToLive: Long = 3
+    var refreshTokenTimeToLive: Long = 360
 }

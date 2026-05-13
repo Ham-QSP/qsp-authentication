@@ -9,6 +9,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.Order
+import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -36,17 +37,17 @@ import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
+import java.net.URI
 import java.util.*
 import java.util.function.Consumer
 import java.util.function.Function
 import java.util.stream.Collectors
 import javax.sql.DataSource
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
 @Configuration
-@EnableConfigurationProperties(ClientsProperties::class)
+@EnableConfigurationProperties(AuthorizationProperties::class)
 @EnableWebSecurity
 class DefaultSecurityConfig {
 
@@ -60,12 +61,15 @@ class DefaultSecurityConfig {
 
     @Bean
     @Order(1)
-    fun authorizationServerSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
+    fun authorizationServerSecurityFilterChain(
+        http: HttpSecurity,
+        registeredClientRepository: RegisteredClientRepository
+    ): SecurityFilterChain {
         var authorizationServerConfigurer = OAuth2AuthorizationServerConfigurer()
         authorizationServerConfigurer.clientAuthentication {
             it
                 .authenticationConverter(PublicClientRefreshTokenAuthenticationConverter())
-                .authenticationProvider(PublicClientRefreshTokenAuthenticationProvider(registeredClientRepository()))
+                .authenticationProvider(PublicClientRefreshTokenAuthenticationProvider(registeredClientRepository))
         }
         http
             .securityMatcher(authorizationServerConfigurer.endpointsMatcher)
@@ -112,15 +116,25 @@ class DefaultSecurityConfig {
     }
 
     @Bean
-    fun corsConfigurationSource(clientProperties: ClientsProperties): CorsConfigurationSource {
+    fun corsConfigurationSource(authorizationProperties: AuthorizationProperties): CorsConfigurationSource {
         val source = UrlBasedCorsConfigurationSource()
         val config = CorsConfiguration()
-        config.addAllowedHeader("*");
-        config.addAllowedMethod("*");
-        config.addAllowedOrigin("http://localhost:3000");
-        config.allowCredentials = true;
-        source.registerCorsConfiguration("/**", config);
-        return source;
+        config.addAllowedHeader("*")
+        config.addAllowedMethod(HttpMethod.GET)
+        config.addAllowedMethod(HttpMethod.POST)
+        authorizationProperties.clients.values
+            .flatMap(ClientProperties::redirectUri)
+            .map(::originFromRedirectUri)
+            .distinct()
+            .forEach(config::addAllowedOrigin)
+        config.allowCredentials = true
+        source.registerCorsConfiguration("/**", config)
+        return source
+    }
+
+    private fun originFromRedirectUri(redirectUri: String): String {
+        val uri = URI.create(redirectUri)
+        return URI(uri.scheme, null, uri.host, uri.port, null, null, null).toString()
     }
 
     @Bean
@@ -133,30 +147,42 @@ class DefaultSecurityConfig {
     }
 
     @Bean
-    fun registeredClientRepository(): RegisteredClientRepository {
-        val tokenSettings = TokenSettings.builder()
-            .accessTokenTimeToLive(3.minutes.toJavaDuration())
-            .refreshTokenTimeToLive(60.minutes.toJavaDuration())
-            .reuseRefreshTokens(false)
-            .build()
-        val oidcClient = RegisteredClient.withId(UUID.randomUUID().toString())
-            .clientId("oidc-client")
-            .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
-            .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-            .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-            .redirectUri("http://localhost:3000/src/assets/login-redirect.html")
-            .scope(OidcScopes.OPENID)
-            .scope(OidcScopes.PROFILE)
-            .clientSettings(
-                ClientSettings.builder()
-                    .requireAuthorizationConsent(true)
-                    .requireProofKey(true)
-                    .build()
-            )
-            .tokenSettings(tokenSettings)
-            .build()
+    fun registeredClientRepository(authorizationProperties: AuthorizationProperties): RegisteredClientRepository {
+        require(authorizationProperties.clients.isNotEmpty()) {
+            "At least one client must be configured under qsp.authorization.clients"
+        }
 
-        return InMemoryRegisteredClientRepository(oidcClient)
+        val registeredClients = authorizationProperties.clients.map { (clientName, clientProperties) ->
+            require(clientProperties.redirectUri.isNotEmpty()) {
+                "Client '$clientName' must configure at least one redirect URI"
+            }
+
+            val tokenSettings = TokenSettings.builder()
+                .accessTokenTimeToLive(clientProperties.accessTokenTimeToLive.minutes.toJavaDuration())
+                .refreshTokenTimeToLive(clientProperties.refreshTokenTimeToLive.minutes.toJavaDuration())
+                .reuseRefreshTokens(false)
+                .build()
+
+            val clientBuilder = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId(clientName)
+                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .scope(OidcScopes.OPENID)
+                .scope(OidcScopes.PROFILE)
+                .clientSettings(
+                    ClientSettings.builder()
+                        .requireAuthorizationConsent(true)
+                        .requireProofKey(true)
+                        .build()
+                )
+                .tokenSettings(tokenSettings)
+
+            clientProperties.redirectUri.forEach(clientBuilder::redirectUri)
+            clientBuilder.build()
+        }
+
+        return InMemoryRegisteredClientRepository(registeredClients)
     }
 
     @Bean
@@ -173,7 +199,7 @@ class DefaultSecurityConfig {
                                     Collectors.toSet(),
                                     Function { s: MutableSet<String?>? -> Collections.unmodifiableSet(s) })
                             )
-                    claims!!.put("roles", roles)
+                    claims!!["roles"] = roles
                 })
             }
         }

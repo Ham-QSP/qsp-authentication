@@ -3,3 +3,11 @@ spring:
     url: jdbc:h2:mem:testdb
     username: sa
     password:
+
+qsp.authorization:
+  clients:
+    portal:
+      redirect-uri:
+        - "http://localhost:3000"
+      access-token-time-to-live: 3
+      refresh-token-time-to-live: 720

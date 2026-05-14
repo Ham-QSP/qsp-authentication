@@ -9,7 +9,7 @@
     </parent>
     <groupId>fr.f4fez</groupId>
     <artifactId>qsp-authentication</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.0-SNAPSHOT</version>
     <name>QSP Authentication</name>
     <description>QSP OAuth2 Authorization server</description>
     <url />
@@ -22,7 +22,7 @@
     <scm>
         <connection>scm:git:https://github.com/Ham-QSP/qsp-authentication.git</connection>
         <developerConnection>scm:git:https://github.com/Ham-QSP/qsp-authentication.git</developerConnection>
-        <tag>v0.1.0</tag>
+        <tag>HEAD</tag>
         <url>https://github.com/Ham-QSP/qsp-authentication</url>
     </scm>
     <properties>

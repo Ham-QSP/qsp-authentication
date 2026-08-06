@@ -2,3 +2,6 @@ databaseChangeLog:
   - include:
       file: 00000_initial.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 00001_authorities_reference.yaml
+      relativeToChangelogFile: true

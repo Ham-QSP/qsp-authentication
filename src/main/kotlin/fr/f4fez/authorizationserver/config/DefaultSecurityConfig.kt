@@ -12,6 +12,7 @@ import org.springframework.core.annotation.Order
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.security.config.Customizer
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer
@@ -19,6 +20,8 @@ import org.springframework.security.core.Authentication
 import org.springframework.security.core.authority.AuthorityUtils
 import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.security.core.userdetails.jdbc.JdbcDaoImpl
+import org.springframework.security.crypto.factory.PasswordEncoderFactories
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.oauth2.core.AuthorizationGrantType
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod
 import org.springframework.security.oauth2.core.OAuth2RefreshToken
@@ -49,6 +52,7 @@ import kotlin.time.toJavaDuration
 @Configuration
 @EnableConfigurationProperties(AuthorizationProperties::class)
 @EnableWebSecurity
+@EnableMethodSecurity
 class DefaultSecurityConfig {
 
     val DEF_USERS_BY_USERNAME_QUERY: String = ("select username,password,enabled "
@@ -56,7 +60,7 @@ class DefaultSecurityConfig {
             + "where username = ?")
 
     val DEF_AUTHORITIES_BY_USERNAME_QUERY: String = ("select username,authority "
-            + "from qsp_auth_authorities "
+            + "from qsp_auth_user_authorities "
             + "where username = ?")
 
     @Bean
@@ -97,7 +101,14 @@ class DefaultSecurityConfig {
     @Order(2)
     fun defaultSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http.authorizeHttpRequests { authorizeRequest ->
-            authorizeRequest.anyRequest().authenticated()
+            authorizeRequest
+                .requestMatchers(
+                    "/v3/api-docs/**",
+                    "/swagger-ui/**",
+                    "/swagger-ui.html"
+                ).permitAll()
+                .requestMatchers("/users/@me").authenticated()
+                .anyRequest().hasRole("ADMIN")
         }
             .formLogin(Customizer.withDefaults())
             .cors(Customizer.withDefaults())
@@ -136,6 +147,9 @@ class DefaultSecurityConfig {
         val uri = URI.create(redirectUri)
         return URI(uri.scheme, null, uri.host, uri.port, null, null, null).toString()
     }
+
+    @Bean
+    fun passwordEncoder(): PasswordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder()
 
     @Bean
     fun users(datasource: DataSource): UserDetailsService {

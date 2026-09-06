@@ -30,11 +30,16 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # Run the official image directly, pinned by digest. Wrapper actions need
+      # checks: write or pull-requests: write to report, which a pull request
+      # from a fork never gets; this needs no permissions at all and simply
+      # fails the job on findings.
       - name: Run actionlint
-        uses: reviewdog/action-actionlint@d290e336d5a743810aef4404f757dc862276d2ae # v1.73.4
-        with:
-          reporter: local
-          fail_level: error
+        run: |
+          docker run --rm \
+            --volume "${PWD}:/repo" --workdir /repo \
+            rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 \
+            -color
 
   # Security auditing of the workflows: expression injection into `run:`,
   # unpinned actions, over-broad GITHUB_TOKEN permissions, risky triggers.

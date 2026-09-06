@@ -29,6 +29,28 @@ env:
   JAVA_VERSION: '25'
 
 jobs:
+  # Formatting, build hygiene and compilation. Runs with -DskipTests so it needs
+  # no Docker daemon, and fails on style before the slower Testcontainers build.
+  quality:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up JDK
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+      # maven-enforcer runs automatically in the validate phase.
+      - name: Check formatting and compile
+        run: ./mvnw --batch-mode -DskipTests spotless:check compile
+
   build:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -37,6 +59,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Set up JDK
         uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with:
@@ -60,6 +84,8 @@ jobs:
     steps:
       - name: Checkout the code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Set up QEMU
         uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
       - name: Set up Docker Build
@@ -92,7 +118,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # The release push authenticates through the global url.insteadOf
+          # rewrite configured below, so checkout must not leave the token
+          # behind in .git/config.
+          persist-credentials: false
 
       - name: Set up Git identity
         run: |
@@ -109,7 +138,9 @@ jobs:
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
-          cache: maven
+          # No Maven cache here on purpose: this job publishes release
+          # artifacts, and a poisoned cache entry would end up inside them.
+          # Releases are rare, so the lost cache hit costs little.
 
       - name: Resolve release options
         id: release-options

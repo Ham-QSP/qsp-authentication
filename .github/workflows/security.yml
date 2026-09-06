@@ -1,0 +1,53 @@
+name: Security
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    # Monday 06:00 UTC — catches findings that appear without a code change.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  # Correctness of the workflow files themselves: bad runner labels, invalid
+  # expressions, and shellcheck over every `run:` block.
+  actionlint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run actionlint
+        uses: reviewdog/action-actionlint@d290e336d5a743810aef4404f757dc862276d2ae # v1.73.4
+        with:
+          reporter: local
+          fail_level: error
+
+  # Security auditing of the workflows: expression injection into `run:`,
+  # unpinned actions, over-broad GITHUB_TOKEN permissions, risky triggers.
+  zizmor:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run zizmor
+        uses: zizmorcore/zizmor-action@70fb788f84895a7701f5643d103d587e460b5c99 # v0.6.3

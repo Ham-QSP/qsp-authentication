@@ -33,7 +33,11 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings
-import org.springframework.security.oauth2.server.authorization.token.*
+import org.springframework.security.oauth2.server.authorization.token.DelegatingOAuth2TokenGenerator
+import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext
+import org.springframework.security.oauth2.server.authorization.token.JwtGenerator
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher
@@ -41,7 +45,8 @@ import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import java.net.URI
-import java.util.*
+import java.util.Collections
+import java.util.UUID
 import java.util.function.Consumer
 import java.util.function.Function
 import java.util.stream.Collectors
@@ -54,20 +59,19 @@ import kotlin.time.toJavaDuration
 @EnableWebSecurity
 @EnableMethodSecurity
 class DefaultSecurityConfig {
+    companion object {
+        private const val DEF_USERS_BY_USERNAME_QUERY =
+            "select username,password,enabled from qsp_auth_users where username = ?"
 
-    val DEF_USERS_BY_USERNAME_QUERY: String = ("select username,password,enabled "
-            + "from qsp_auth_users "
-            + "where username = ?")
-
-    val DEF_AUTHORITIES_BY_USERNAME_QUERY: String = ("select username,authority "
-            + "from qsp_auth_user_authorities "
-            + "where username = ?")
+        private const val DEF_AUTHORITIES_BY_USERNAME_QUERY =
+            "select username,authority from qsp_auth_user_authorities where username = ?"
+    }
 
     @Bean
     @Order(1)
     fun authorizationServerSecurityFilterChain(
         http: HttpSecurity,
-        registeredClientRepository: RegisteredClientRepository
+        registeredClientRepository: RegisteredClientRepository,
     ): SecurityFilterChain {
         var authorizationServerConfigurer = OAuth2AuthorizationServerConfigurer()
         authorizationServerConfigurer.clientAuthentication {
@@ -79,38 +83,40 @@ class DefaultSecurityConfig {
             .securityMatcher(authorizationServerConfigurer.endpointsMatcher)
             .with(
                 authorizationServerConfigurer,
-                { authorizationServer -> authorizationServer.oidc(Customizer.withDefaults()) })
-            .authorizeHttpRequests({ authorize ->
+                { authorizationServer -> authorizationServer.oidc(Customizer.withDefaults()) },
+            ).authorizeHttpRequests({ authorize ->
                 authorize
-                    .anyRequest().authenticated()
+                    .anyRequest()
+                    .authenticated()
             })
-            .exceptionHandling({ exceptions ->
-                exceptions
-                    .defaultAuthenticationEntryPointFor(
-                        LoginUrlAuthenticationEntryPoint("/login"),
-                        MediaTypeRequestMatcher(MediaType.TEXT_HTML)
-                    )
-            }
-            )
-            .cors(Customizer.withDefaults())
+            .exceptionHandling(
+                { exceptions ->
+                    exceptions
+                        .defaultAuthenticationEntryPointFor(
+                            LoginUrlAuthenticationEntryPoint("/login"),
+                            MediaTypeRequestMatcher(MediaType.TEXT_HTML),
+                        )
+                },
+            ).cors(Customizer.withDefaults())
         return http.build()
     }
-
 
     @Bean
     @Order(2)
     fun defaultSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
-        http.authorizeHttpRequests { authorizeRequest ->
-            authorizeRequest
-                .requestMatchers(
-                    "/v3/api-docs/**",
-                    "/swagger-ui/**",
-                    "/swagger-ui.html"
-                ).permitAll()
-                .requestMatchers("/users/@me").authenticated()
-                .anyRequest().hasRole("ADMIN")
-        }
-            .formLogin(Customizer.withDefaults())
+        http
+            .authorizeHttpRequests { authorizeRequest ->
+                authorizeRequest
+                    .requestMatchers(
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                    ).permitAll()
+                    .requestMatchers("/users/@me")
+                    .authenticated()
+                    .anyRequest()
+                    .hasRole("ADMIN")
+            }.formLogin(Customizer.withDefaults())
             .cors(Customizer.withDefaults())
         return http.build()
     }
@@ -118,7 +124,7 @@ class DefaultSecurityConfig {
     @Bean
     fun tokenGenerator(
         jwkSource: JWKSource<SecurityContext>,
-        tokenCustomizer: OAuth2TokenCustomizer<JwtEncodingContext>
+        tokenCustomizer: OAuth2TokenCustomizer<JwtEncodingContext>,
     ): OAuth2TokenGenerator<*> {
         val jwtGenerator = JwtGenerator(NimbusJwtEncoder(jwkSource))
         jwtGenerator.setJwtCustomizer(tokenCustomizer)
@@ -166,56 +172,64 @@ class DefaultSecurityConfig {
             "At least one client must be configured under qsp.authorization.clients"
         }
 
-        val registeredClients = authorizationProperties.clients.map { (clientName, clientProperties) ->
-            require(clientProperties.redirectUri.isNotEmpty()) {
-                "Client '$clientName' must configure at least one redirect URI"
-            }
+        val registeredClients =
+            authorizationProperties.clients.map { (clientName, clientProperties) ->
+                require(clientProperties.redirectUri.isNotEmpty()) {
+                    "Client '$clientName' must configure at least one redirect URI"
+                }
 
-            val tokenSettings = TokenSettings.builder()
-                .accessTokenTimeToLive(clientProperties.accessTokenTimeToLive.minutes.toJavaDuration())
-                .refreshTokenTimeToLive(clientProperties.refreshTokenTimeToLive.minutes.toJavaDuration())
-                .reuseRefreshTokens(false)
-                .build()
-
-            val clientBuilder = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId(clientName)
-                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .scope(OidcScopes.OPENID)
-                .scope(OidcScopes.PROFILE)
-                .clientSettings(
-                    ClientSettings.builder()
-                        .requireAuthorizationConsent(true)
-                        .requireProofKey(true)
+                val tokenSettings =
+                    TokenSettings
+                        .builder()
+                        .accessTokenTimeToLive(clientProperties.accessTokenTimeToLive.minutes.toJavaDuration())
+                        .refreshTokenTimeToLive(clientProperties.refreshTokenTimeToLive.minutes.toJavaDuration())
+                        .reuseRefreshTokens(false)
                         .build()
-                )
-                .tokenSettings(tokenSettings)
 
-            clientProperties.redirectUri.forEach(clientBuilder::redirectUri)
-            clientBuilder.build()
-        }
+                val clientBuilder =
+                    RegisteredClient
+                        .withId(UUID.randomUUID().toString())
+                        .clientId(clientName)
+                        .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+                        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                        .scope(OidcScopes.OPENID)
+                        .scope(OidcScopes.PROFILE)
+                        .clientSettings(
+                            ClientSettings
+                                .builder()
+                                .requireAuthorizationConsent(true)
+                                .requireProofKey(true)
+                                .build(),
+                        ).tokenSettings(tokenSettings)
+
+                clientProperties.redirectUri.forEach(clientBuilder::redirectUri)
+                clientBuilder.build()
+            }
 
         return InMemoryRegisteredClientRepository(registeredClients)
     }
 
     @Bean
-    fun jwtTokenCustomizer(): OAuth2TokenCustomizer<JwtEncodingContext> {
-        return OAuth2TokenCustomizer { context: JwtEncodingContext ->
+    fun jwtTokenCustomizer(): OAuth2TokenCustomizer<JwtEncodingContext> =
+        OAuth2TokenCustomizer { context: JwtEncodingContext ->
             if (OAuth2TokenType.ACCESS_TOKEN == context.tokenType) {
-                context.claims.claims(Consumer { claims: MutableMap<String, Any> ->
-                    val roles =
-                        AuthorityUtils.authorityListToSet(context.getPrincipal<Authentication>()!!.authorities)
-                            .stream()
-                            .map { c: String? -> c!!.replaceFirst("^ROLE_".toRegex(), "") }
-                            .collect(
-                                Collectors.collectingAndThen(
-                                    Collectors.toSet(),
-                                    Function { s: MutableSet<String?>? -> Collections.unmodifiableSet(s) })
-                            )
-                    claims["roles"] = roles
-                })
+                context.claims.claims(
+                    Consumer { claims: MutableMap<String, Any> ->
+                        val roles =
+                            AuthorityUtils
+                                .authorityListToSet(context.getPrincipal<Authentication>()!!.authorities)
+                                .stream()
+                                .map { c: String? -> c!!.replaceFirst("^ROLE_".toRegex(), "") }
+                                .collect(
+                                    Collectors.collectingAndThen(
+                                        Collectors.toSet(),
+                                        Function { s: MutableSet<String?>? -> Collections.unmodifiableSet(s) },
+                                    ),
+                                )
+                        claims["roles"] = roles
+                    },
+                )
             }
         }
-    }
 }

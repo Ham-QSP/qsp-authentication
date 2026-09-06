@@ -1,20 +1,19 @@
 /*
-This program is free software: you can redistribute it and/or modify 
-it under the terms of the GNU General Public License as published by 
-the Free Software Foundation, either version 3 of the License, 
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, but 
-WITHOUT ANY WARRANTY; without even the implied warranty of 
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 General Public License for more details.
 
-You should have received a copy of the GNU General Public License 
+You should have received a copy of the GNU General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>
  */
 
 package fr.f4fez.authorizationserver.authorization
-
 
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.security.authentication.AuthenticationProvider
@@ -37,7 +36,7 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator
 import org.springframework.security.web.authentication.AuthenticationConverter
 import java.time.Instant
-import java.util.*
+import java.util.Base64
 
 /***
  * Source: https://github.com/spring-projects/spring-authorization-server/pull/1432
@@ -66,15 +65,14 @@ class PublicClientRefreshTokenAuthenticationConverter : AuthenticationConverter 
 
 @Transient
 class PublicClientRefreshTokenAuthenticationToken : OAuth2ClientAuthenticationToken {
-
     constructor(clientId: String) : super(clientId, ClientAuthenticationMethod.NONE, null, null)
 
     constructor(registeredClient: RegisteredClient) : super(registeredClient, ClientAuthenticationMethod.NONE, null)
 }
 
-class PublicClientRefreshTokenAuthenticationProvider(private val registeredClientRepository: RegisteredClientRepository) :
-    AuthenticationProvider {
-
+class PublicClientRefreshTokenAuthenticationProvider(
+    private val registeredClientRepository: RegisteredClientRepository,
+) : AuthenticationProvider {
     override fun authenticate(authentication: Authentication): Authentication? {
         val publicClientAuthentication: PublicClientRefreshTokenAuthenticationToken =
             authentication as PublicClientRefreshTokenAuthenticationToken
@@ -99,17 +97,17 @@ class PublicClientRefreshTokenAuthenticationProvider(private val registeredClien
         return PublicClientRefreshTokenAuthenticationToken(registeredClient)
     }
 
-    override fun supports(authentication: Class<*>): Boolean {
-        return PublicClientRefreshTokenAuthenticationToken::class.java.isAssignableFrom(authentication)
-    }
+    override fun supports(authentication: Class<*>): Boolean =
+        PublicClientRefreshTokenAuthenticationToken::class.java.isAssignableFrom(authentication)
 
     companion object {
         private fun throwInvalidClient(parameterName: String) {
-            val error = OAuth2Error(
-                OAuth2ErrorCodes.INVALID_CLIENT,
-                "Public client authentication failed: $parameterName",
-                null,
-            )
+            val error =
+                OAuth2Error(
+                    OAuth2ErrorCodes.INVALID_CLIENT,
+                    "Public client authentication failed: $parameterName",
+                    null,
+                )
             throw OAuth2AuthenticationException(error)
         }
     }

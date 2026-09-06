@@ -22,19 +22,17 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.PostgreSQLContainer
 
-
 @SpringBootTest
 class AuthenticationApplicationTest {
-
     @Test
     fun contextLoads() {
     }
 
-
     companion object {
-        var postgres: PostgreSQLContainer<*> = PostgreSQLContainer(
-            "postgres:17-alpine"
-        )
+        var postgres: PostgreSQLContainer<*> =
+            PostgreSQLContainer(
+                "postgres:17-alpine",
+            )
 
         @BeforeAll
         @JvmStatic
@@ -57,4 +55,3 @@ class AuthenticationApplicationTest {
         }
     }
 }
-

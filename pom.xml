@@ -35,10 +35,28 @@
         <maven-release-plugin.version>3.3.1</maven-release-plugin.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <springdoc-openapi.version>3.1.0</springdoc-openapi.version>
+        <!-- Ahead of the Spring Boot 4.1.1 BOM (11.0.24), which is affected by
+             GHSA-9xv2-5v5q-p794, GHSA-gcx9-497g-6cp6 and GHSA-h3x4-894j-xpx5.
+             Drop this override once the BOM catches up. -->
+        <tomcat.version>11.0.25</tomcat.version>
+        <commons-compress.version>1.26.0</commons-compress.version>
         <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
         <spotless-maven-plugin.version>3.10.2</spotless-maven-plugin.version>
         <ktlint.version>1.8.0</ktlint.version>
     </properties>
+    <dependencyManagement>
+        <dependencies>
+            <!-- Testcontainers pulls in 1.24.0, which is affected by
+                 GHSA-4265-ccf5-phj5 and GHSA-4g9r-vxhx-9pgx. Test scope only.
+                 Drop this once Testcontainers ships a fixed version. -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>${commons-compress.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>

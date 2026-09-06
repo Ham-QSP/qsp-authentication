@@ -35,11 +35,11 @@ import java.util.UUID
 @RestController
 @RequestMapping("/users")
 @Tag(name = "Users", description = "User management")
-class UserController(private val userService: UserService) {
-
+class UserController(
+    private val userService: UserService,
+) {
     @GetMapping
-    fun findAll(): List<UserResponse> =
-        userService.findAll().map(UserResponse::from)
+    fun findAll(): List<UserResponse> = userService.findAll().map(UserResponse::from)
 
     @GetMapping("/@me")
     @PreAuthorize("isAuthenticated()")
@@ -47,11 +47,14 @@ class UserController(private val userService: UserService) {
         UserResponse.from(userService.findByUsername(authentication.name))
 
     @GetMapping("/{id}")
-    fun findById(@PathVariable id: UUID): UserResponse =
-        UserResponse.from(userService.findById(id))
+    fun findById(
+        @PathVariable id: UUID,
+    ): UserResponse = UserResponse.from(userService.findById(id))
 
     @PostMapping
-    fun create(@Valid @RequestBody request: CreateUserRequest): ResponseEntity<UserResponse> {
+    fun create(
+        @Valid @RequestBody request: CreateUserRequest,
+    ): ResponseEntity<UserResponse> {
         val created = userService.create(request)
         return ResponseEntity
             .created(URI.create("/users/${created.id}"))
@@ -59,10 +62,14 @@ class UserController(private val userService: UserService) {
     }
 
     @PutMapping("/{id}")
-    fun update(@PathVariable id: UUID, @Valid @RequestBody request: UpdateUserRequest): UserResponse =
-        UserResponse.from(userService.update(id, request))
+    fun update(
+        @PathVariable id: UUID,
+        @Valid @RequestBody request: UpdateUserRequest,
+    ): UserResponse = UserResponse.from(userService.update(id, request))
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun delete(@PathVariable id: UUID) = userService.delete(id)
+    fun delete(
+        @PathVariable id: UUID,
+    ) = userService.delete(id)
 }

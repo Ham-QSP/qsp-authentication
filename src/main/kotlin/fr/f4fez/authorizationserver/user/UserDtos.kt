@@ -26,17 +26,18 @@ data class UserResponse(
     val email: String,
     val enabled: Boolean,
     val emailValidated: Boolean,
-    val passwordExpiration: LocalDateTime?
+    val passwordExpiration: LocalDateTime?,
 ) {
     companion object {
-        fun from(user: User): UserResponse = UserResponse(
-            id = requireNotNull(user.id),
-            username = user.username,
-            email = user.email,
-            enabled = user.enabled,
-            emailValidated = user.emailValidated,
-            passwordExpiration = user.passwordExpiration
-        )
+        fun from(user: User): UserResponse =
+            UserResponse(
+                id = requireNotNull(user.id),
+                username = user.username,
+                email = user.email,
+                enabled = user.enabled,
+                emailValidated = user.emailValidated,
+                passwordExpiration = user.passwordExpiration,
+            )
     }
 }
 
@@ -44,17 +45,14 @@ data class CreateUserRequest(
     @field:NotBlank
     @field:Size(max = 100)
     val username: String,
-
     @field:NotBlank
     @field:Size(max = 100)
     val password: String,
-
     @field:NotBlank
     @field:Email
     @field:Size(max = 320)
     val email: String,
-
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
 )
 
 data class UpdateUserRequest(
@@ -62,9 +60,7 @@ data class UpdateUserRequest(
     @field:Email
     @field:Size(max = 320)
     val email: String,
-
     val enabled: Boolean,
-
     @field:Size(max = 100)
-    val password: String? = null
+    val password: String? = null,
 )

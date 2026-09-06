@@ -1,0 +1,31 @@
+# Shared by IntelliJ and by ktlint (via Spotless) so the IDE and CI never disagree.
+# https://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{kt,kts}]
+ktlint_code_style = ktlint_official
+max_line_length = 120
+# Test names are written between backticks, and file names follow Spring
+# conventions rather than the single-top-level-class rule.
+ktlint_standard_function-naming = disabled
+ktlint_standard_filename = disabled
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.xml]
+indent_size = 4
+
+[*.md]
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab

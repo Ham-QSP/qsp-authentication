@@ -23,16 +23,18 @@ import java.util.UUID
 @Service
 class UserService(
     private val userRepository: UserRepository,
-    private val passwordEncoder: PasswordEncoder
+    private val passwordEncoder: PasswordEncoder,
 ) {
-
     fun findAll(): List<User> = userRepository.findAll().toList()
 
-    fun findById(id: UUID): User = userRepository.findById(id)
-        .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "User '$id' not found") }
+    fun findById(id: UUID): User =
+        userRepository
+            .findById(id)
+            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "User '$id' not found") }
 
-    fun findByUsername(username: String): User = userRepository.findByUsername(username)
-        ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User '$username' not found")
+    fun findByUsername(username: String): User =
+        userRepository.findByUsername(username)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User '$username' not found")
 
     fun create(request: CreateUserRequest): User {
         if (userRepository.existsByUsername(request.username)) {
@@ -42,27 +44,32 @@ class UserService(
             throw ResponseStatusException(HttpStatus.CONFLICT, "Email '${request.email}' is already used")
         }
 
-        val user = User(
-            username = request.username,
-            password = passwordEncoder.encode(request.password)!!,
-            enabled = request.enabled,
-            email = request.email,
-            emailValidated = false
-        )
+        val user =
+            User(
+                username = request.username,
+                password = passwordEncoder.encode(request.password)!!,
+                enabled = request.enabled,
+                email = request.email,
+                emailValidated = false,
+            )
         return userRepository.save(user)
     }
 
-    fun update(id: UUID, request: UpdateUserRequest): User {
+    fun update(
+        id: UUID,
+        request: UpdateUserRequest,
+    ): User {
         val existing = findById(id)
         if (existing.email != request.email && userRepository.existsByEmail(request.email)) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Email '${request.email}' is already used")
         }
 
-        val updated = existing.copy(
-            email = request.email,
-            enabled = request.enabled,
-            password = request.password?.let { passwordEncoder.encode(it)!! } ?: existing.password
-        )
+        val updated =
+            existing.copy(
+                email = request.email,
+                enabled = request.enabled,
+                password = request.password?.let { passwordEncoder.encode(it)!! } ?: existing.password,
+            )
         return userRepository.save(updated)
     }
 

@@ -107,11 +107,11 @@ class DefaultSecurityConfig {
     @Bean
     fun tokenGenerator(
         jwkSource: JWKSource<SecurityContext>,
-        tokenCustomizer: OAuth2TokenCustomizer<JwtEncodingContext?>
+        tokenCustomizer: OAuth2TokenCustomizer<JwtEncodingContext>
     ): OAuth2TokenGenerator<*> {
         val jwtGenerator = JwtGenerator(NimbusJwtEncoder(jwkSource))
         jwtGenerator.setJwtCustomizer(tokenCustomizer)
-        val refreshTokenGenerator: OAuth2TokenGenerator<OAuth2RefreshToken?> = CustomRefreshTokenGenerator()
+        val refreshTokenGenerator: OAuth2TokenGenerator<OAuth2RefreshToken> = CustomRefreshTokenGenerator()
         return DelegatingOAuth2TokenGenerator(jwtGenerator, refreshTokenGenerator)
     }
 
@@ -187,11 +187,11 @@ class DefaultSecurityConfig {
 
     @Bean
     fun jwtTokenCustomizer(): OAuth2TokenCustomizer<JwtEncodingContext> {
-        return OAuth2TokenCustomizer { context: JwtEncodingContext? ->
-            if (OAuth2TokenType.ACCESS_TOKEN == context!!.tokenType) {
-                context.claims.claims(Consumer { claims: MutableMap<String?, Any?>? ->
+        return OAuth2TokenCustomizer { context: JwtEncodingContext ->
+            if (OAuth2TokenType.ACCESS_TOKEN == context.tokenType) {
+                context.claims.claims(Consumer { claims: MutableMap<String, Any> ->
                     val roles =
-                        AuthorityUtils.authorityListToSet(context.getPrincipal<Authentication>().authorities)
+                        AuthorityUtils.authorityListToSet(context.getPrincipal<Authentication>()!!.authorities)
                             .stream()
                             .map { c: String? -> c!!.replaceFirst("^ROLE_".toRegex(), "") }
                             .collect(
@@ -199,7 +199,7 @@ class DefaultSecurityConfig {
                                     Collectors.toSet(),
                                     Function { s: MutableSet<String?>? -> Collections.unmodifiableSet(s) })
                             )
-                    claims!!["roles"] = roles
+                    claims["roles"] = roles
                 })
             }
         }

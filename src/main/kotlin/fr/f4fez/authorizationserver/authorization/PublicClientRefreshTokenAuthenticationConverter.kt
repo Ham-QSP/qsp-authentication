@@ -119,7 +119,7 @@ class PublicClientRefreshTokenAuthenticationProvider(private val registeredClien
  * Custom refresh token generator that overrides [org.springframework.security.oauth2.server.authorization.token.OAuth2RefreshTokenGenerator]
  * to allow generating a refresh token for public clients
  */
-class CustomRefreshTokenGenerator : OAuth2TokenGenerator<OAuth2RefreshToken?> {
+class CustomRefreshTokenGenerator : OAuth2TokenGenerator<OAuth2RefreshToken> {
     private val refreshTokenGenerator: StringKeyGenerator =
         Base64StringKeyGenerator(Base64.getUrlEncoder().withoutPadding(), 96)
 

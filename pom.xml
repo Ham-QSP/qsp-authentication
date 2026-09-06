@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.6</version>
+        <version>4.1.1</version>
         <relativePath /> <!-- lookup parent from repository -->
     </parent>
     <groupId>fr.f4fez</groupId>
@@ -27,8 +27,8 @@
     </scm>
     <properties>
         <java.version>25</java.version>
-        <kotlin.version>2.3.20</kotlin.version>
-        <maven-release-plugin.version>3.1.1</maven-release-plugin.version>
+        <kotlin.version>2.4.10</kotlin.version>
+        <maven-release-plugin.version>3.3.1</maven-release-plugin.version>
         <testcontainers.version>1.21.4</testcontainers.version>
     </properties>
     <dependencies>

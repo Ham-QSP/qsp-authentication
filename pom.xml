@@ -14,7 +14,11 @@
     <description>QSP OAuth2 Authorization server</description>
     <url />
     <licenses>
-        <license />
+        <license>
+            <name>GNU General Public License v3.0</name>
+            <url>https://www.gnu.org/licenses/gpl-3.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
     </licenses>
     <developers>
         <developer />
@@ -31,6 +35,9 @@
         <maven-release-plugin.version>3.3.1</maven-release-plugin.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <springdoc-openapi.version>3.1.0</springdoc-openapi.version>
+        <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
+        <spotless-maven-plugin.version>3.10.2</spotless-maven-plugin.version>
+        <ktlint.version>1.8.0</ktlint.version>
     </properties>
     <dependencies>
         <dependency>
@@ -125,6 +132,63 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>${maven-enforcer-plugin.version}</version>
+                <!-- Declared at plugin level so that `mvn enforcer:enforce` works
+                     from the command line as well as through the bound execution. -->
+                <configuration>
+                    <rules>
+                        <requireJavaVersion>
+                            <version>[25,26)</version>
+                        </requireJavaVersion>
+                        <requireMavenVersion>
+                            <version>[3.9.0,)</version>
+                        </requireMavenVersion>
+                        <banDuplicatePomDependencyVersions />
+                        <!-- Release builds must not depend on snapshots. -->
+                        <requireReleaseDeps>
+                            <onlyWhenRelease>true</onlyWhenRelease>
+                        </requireReleaseDeps>
+                    </rules>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>enforce-build-environment</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless-maven-plugin.version}</version>
+                <configuration>
+                    <kotlin>
+                        <includes>
+                            <include>src/main/kotlin/**/*.kt</include>
+                            <include>src/test/kotlin/**/*.kt</include>
+                        </includes>
+                        <!-- Rules come from .editorconfig, shared with the IDE. -->
+                        <ktlint>
+                            <version>${ktlint.version}</version>
+                        </ktlint>
+                    </kotlin>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>spotless-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

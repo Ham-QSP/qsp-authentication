@@ -43,6 +43,8 @@
         <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
         <spotless-maven-plugin.version>3.10.2</spotless-maven-plugin.version>
         <ktlint.version>1.8.0</ktlint.version>
+        <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
+        <cyclonedx-maven-plugin.version>2.9.3</cyclonedx-maven-plugin.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -178,6 +180,56 @@
                         <phase>validate</phase>
                         <goals>
                             <goal>enforce</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco-maven-plugin.version}</version>
+                <!-- Measurement only: no check execution and no threshold. The
+                     suite is a single context-loads test, so any coverage gate
+                     would be either unreachable or meaningless. Add one once
+                     there are real tests. -->
+                <executions>
+                    <execution>
+                        <id>jacoco-prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.cyclonedx</groupId>
+                <artifactId>cyclonedx-maven-plugin</artifactId>
+                <version>${cyclonedx-maven-plugin.version}</version>
+                <configuration>
+                    <outputFormat>all</outputFormat>
+                    <outputName>bom</outputName>
+                    <schemaVersion>1.6</schemaVersion>
+                </configuration>
+                <executions>
+                    <!-- The plugin binds makeAggregateBom on its own; disable
+                         that binding so the BOM is generated once, at package,
+                         where target/bom.json and target/bom.xml are wanted. -->
+                    <execution>
+                        <id>default</id>
+                        <phase>none</phase>
+                    </execution>
+                    <execution>
+                        <id>cyclonedx-bom</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>makeAggregateBom</goal>
                         </goals>
                     </execution>
                 </executions>

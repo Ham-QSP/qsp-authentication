@@ -31,15 +31,15 @@
     </scm>
     <properties>
         <java.version>25</java.version>
-        <kotlin.version>2.4.10</kotlin.version>
+        <kotlin.version>2.4.20</kotlin.version>
         <maven-release-plugin.version>3.3.1</maven-release-plugin.version>
         <testcontainers.version>1.21.4</testcontainers.version>
-        <springdoc-openapi.version>3.1.0</springdoc-openapi.version>
+        <springdoc-openapi.version>3.1.1</springdoc-openapi.version>
         <!-- Ahead of the Spring Boot 4.1.1 BOM (11.0.24), which is affected by
              GHSA-9xv2-5v5q-p794, GHSA-gcx9-497g-6cp6 and GHSA-h3x4-894j-xpx5.
              Drop this override once the BOM catches up. -->
         <tomcat.version>11.0.25</tomcat.version>
-        <commons-compress.version>1.26.0</commons-compress.version>
+        <commons-compress.version>1.28.0</commons-compress.version>
         <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
         <spotless-maven-plugin.version>3.10.2</spotless-maven-plugin.version>
         <ktlint.version>1.8.0</ktlint.version>

@@ -39,6 +39,12 @@
              GHSA-9xv2-5v5q-p794, GHSA-gcx9-497g-6cp6 and GHSA-h3x4-894j-xpx5.
              Drop this override once the BOM catches up. -->
         <tomcat.version>11.0.25</tomcat.version>
+        <!-- Ahead of the Spring Boot 4.1.1 BOM (2.21.5 / 3.1.5), which is affected by
+             GHSA-7hhh-6rmp-j9qf, GHSA-p6pp-m3f8-5c89, GHSA-cxp5-3px4-pw24,
+             GHSA-gx83-3vf8-gh7j, GHSA-q4xh-88c3-wmh7, GHSA-wjgm-6hv5-3cvf and
+             GHSA-wv8q-qhhj-9h54. Drop this override once the BOM catches up. -->
+        <jackson-2-bom.version>2.21.7</jackson-2-bom.version>
+        <jackson-bom.version>3.1.7</jackson-bom.version>
         <commons-compress.version>1.26.0</commons-compress.version>
         <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
         <spotless-maven-plugin.version>3.10.2</spotless-maven-plugin.version>

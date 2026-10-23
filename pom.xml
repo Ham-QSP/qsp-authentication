@@ -9,7 +9,7 @@
     </parent>
     <groupId>fr.f4fez</groupId>
     <artifactId>qsp-authentication</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.1-SNAPSHOT</version>
     <name>QSP Authentication</name>
     <description>QSP OAuth2 Authorization server</description>
     <url />

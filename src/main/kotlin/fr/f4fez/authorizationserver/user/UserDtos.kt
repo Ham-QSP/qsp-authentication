@@ -66,6 +66,7 @@ data class UpdateUserRequest(
     @field:Size(max = 100)
     val password: String? = null,
     val roles: Set<String>? = null,
+    val passwordExpiration: LocalDateTime? = null,
 )
 
 data class ChangePasswordRequest(

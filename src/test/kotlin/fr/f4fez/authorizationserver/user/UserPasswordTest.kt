@@ -26,6 +26,7 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.web.server.ResponseStatusException
 import org.testcontainers.containers.PostgreSQLContainer
+import java.time.LocalDateTime
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
@@ -89,6 +90,38 @@ class UserPasswordTest {
         userService.changePassword("pwd-expired", ChangePasswordRequest("old-password", "new-password"))
 
         assertNull(userService.findByUsername("pwd-expired").passwordExpiration)
+    }
+
+    @Test
+    fun `update sets the password expiration`() {
+        val user = createUser("exp-set")
+        val expiration = LocalDateTime.of(2030, 1, 2, 3, 4, 5)
+
+        val updated =
+            userService.update(
+                user.id!!,
+                UpdateUserRequest(email = "exp-set@localhost", enabled = true, passwordExpiration = expiration),
+            )
+
+        assertEquals(expiration, updated.passwordExpiration)
+        assertEquals(expiration, userService.findById(user.id!!).passwordExpiration)
+    }
+
+    @Test
+    fun `update without password expiration clears it`() {
+        val user = createUser("exp-clear")
+        userService.update(
+            user.id!!,
+            UpdateUserRequest(
+                email = "exp-clear@localhost",
+                enabled = true,
+                passwordExpiration = LocalDateTime.of(2030, 1, 2, 3, 4, 5),
+            ),
+        )
+
+        userService.update(user.id!!, UpdateUserRequest(email = "exp-clear@localhost", enabled = true))
+
+        assertNull(userService.findById(user.id!!).passwordExpiration)
     }
 
     companion object {

@@ -86,6 +86,7 @@ class UserService(
             existing.copy(
                 email = request.email,
                 enabled = request.enabled,
+                passwordExpiration = request.passwordExpiration,
                 password = request.password?.let { passwordEncoder.encode(it)!! } ?: existing.password,
             )
         val saved = userRepository.save(updated)

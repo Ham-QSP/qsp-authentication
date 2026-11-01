@@ -22,7 +22,6 @@ import org.springframework.security.config.annotation.web.configurers.oauth2.ser
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.authority.AuthorityUtils
 import org.springframework.security.core.userdetails.UserDetailsService
-import org.springframework.security.core.userdetails.jdbc.JdbcDaoImpl
 import org.springframework.security.crypto.factory.PasswordEncoderFactories
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.oauth2.core.AuthorizationGrantType
@@ -68,7 +67,7 @@ import kotlin.time.toJavaDuration
 class DefaultSecurityConfig {
     companion object {
         private const val DEF_USERS_BY_USERNAME_QUERY =
-            "select username,password,enabled from qsp_auth_users where username = ?"
+            "select username,password,enabled,password_expiration from qsp_auth_users where username = ?"
 
         private const val DEF_AUTHORITIES_BY_USERNAME_QUERY =
             "select username,authority from qsp_auth_user_authorities where username = ?"
@@ -184,7 +183,7 @@ class DefaultSecurityConfig {
 
     @Bean
     fun users(datasource: DataSource): UserDetailsService {
-        val service = JdbcDaoImpl()
+        val service = PasswordExpirationAwareJdbcDao()
         service.usersByUsernameQuery = DEF_USERS_BY_USERNAME_QUERY
         service.setAuthoritiesByUsernameQuery(DEF_AUTHORITIES_BY_USERNAME_QUERY)
         service.setDataSource(datasource)

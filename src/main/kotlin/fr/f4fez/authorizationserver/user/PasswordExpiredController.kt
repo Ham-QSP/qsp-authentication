@@ -36,10 +36,6 @@ import java.net.URI
 class PasswordExpiredController(
     private val userService: UserService,
 ) {
-    companion object {
-        private const val BCRYPT_MAX_BYTES = 72
-    }
-
     @GetMapping
     fun form(request: HttpServletRequest): ResponseEntity<String> {
         val username = expiredUsername(request) ?: return redirectToLogin()
@@ -79,7 +75,6 @@ class PasswordExpiredController(
         when {
             newPassword.isBlank() -> "The new password is required"
             newPassword != confirmPassword -> "The passwords do not match"
-            newPassword.toByteArray().size > BCRYPT_MAX_BYTES -> "The new password is too long"
             else -> null
         }
 

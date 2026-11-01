@@ -11,3 +11,11 @@ qsp.authorization:
         - "http://localhost:3000"
       access-token-time-to-live: 3
       refresh-token-time-to-live: 720
+
+qsp.password-policy:
+  min-length: 1
+  min-uppercase: 0
+  min-lowercase: 0
+  min-digits: 0
+  min-special: 0
+  reject-username: false

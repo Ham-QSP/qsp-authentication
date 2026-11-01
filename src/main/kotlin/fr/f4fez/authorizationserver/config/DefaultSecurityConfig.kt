@@ -64,7 +64,7 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 
 @Configuration
-@EnableConfigurationProperties(AuthorizationProperties::class)
+@EnableConfigurationProperties(AuthorizationProperties::class, PasswordPolicyProperties::class)
 @EnableWebSecurity
 @EnableMethodSecurity
 class DefaultSecurityConfig {

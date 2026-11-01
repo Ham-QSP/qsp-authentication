@@ -27,6 +27,7 @@ class UserService(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder,
     private val jdbcTemplate: JdbcTemplate,
+    private val passwordPolicy: PasswordPolicy,
 ) {
     companion object {
         private const val DEFAULT_AUTHORITY = "ROLE_USER"
@@ -57,6 +58,8 @@ class UserService(
             throw ResponseStatusException(HttpStatus.CONFLICT, "Email '${request.email}' is already used")
         }
 
+        passwordPolicy.requireValid(request.username, request.password)
+
         val user =
             User(
                 username = request.username,
@@ -81,6 +84,7 @@ class UserService(
         }
 
         request.roles?.let(::requireKnownRoles)
+        request.password?.let { passwordPolicy.requireValid(existing.username, it) }
 
         val updated =
             existing.copy(
@@ -104,6 +108,7 @@ class UserService(
         if (!passwordEncoder.matches(request.currentPassword, user.password)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect")
         }
+        passwordPolicy.requireValid(user.username, request.newPassword)
         storePassword(user, request.newPassword)
     }
 
@@ -115,6 +120,7 @@ class UserService(
         if (passwordEncoder.matches(newPassword, user.password)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "The new password must differ from the expired one")
         }
+        passwordPolicy.requireValid(user.username, newPassword)
         storePassword(user, newPassword)
     }
 

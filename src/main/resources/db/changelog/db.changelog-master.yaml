@@ -5,3 +5,6 @@ databaseChangeLog:
   - include:
       file: 00001_authorities_reference.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 00002_Add_User_Role.yaml
+      relativeToChangelogFile: true

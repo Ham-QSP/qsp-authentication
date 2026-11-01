@@ -1,7 +1,10 @@
 package fr.f4fez.authorizationserver.config
 
+import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.source.JWKSource
+import com.nimbusds.jose.proc.JWSVerificationKeySelector
 import com.nimbusds.jose.proc.SecurityContext
+import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import fr.f4fez.authorizationserver.authorization.CustomRefreshTokenGenerator
 import fr.f4fez.authorizationserver.authorization.PublicClientRefreshTokenAuthenticationConverter
 import fr.f4fez.authorizationserver.authorization.PublicClientRefreshTokenAuthenticationProvider
@@ -26,7 +29,11 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod
 import org.springframework.security.oauth2.core.OAuth2RefreshToken
 import org.springframework.security.oauth2.core.oidc.OidcScopes
+import org.springframework.security.oauth2.jwt.JwtDecoder
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient
@@ -117,8 +124,26 @@ class DefaultSecurityConfig {
                     .anyRequest()
                     .hasRole("ADMIN")
             }.formLogin(Customizer.withDefaults())
-            .cors(Customizer.withDefaults())
+            .oauth2ResourceServer { resourceServer ->
+                resourceServer.jwt { it.jwtAuthenticationConverter(jwtAuthenticationConverter()) }
+            }.cors(Customizer.withDefaults())
         return http.build()
+    }
+
+    @Bean
+    fun jwtDecoder(jwkSource: JWKSource<SecurityContext>): JwtDecoder {
+        val jwtProcessor = DefaultJWTProcessor<SecurityContext>()
+        jwtProcessor.jwsKeySelector = JWSVerificationKeySelector(JWSAlgorithm.RS256, jwkSource)
+        return NimbusJwtDecoder(jwtProcessor)
+    }
+
+    private fun jwtAuthenticationConverter(): JwtAuthenticationConverter {
+        val authoritiesConverter = JwtGrantedAuthoritiesConverter()
+        authoritiesConverter.setAuthoritiesClaimName("roles")
+        authoritiesConverter.setAuthorityPrefix("ROLE_")
+        val converter = JwtAuthenticationConverter()
+        converter.setJwtGrantedAuthoritiesConverter(authoritiesConverter)
+        return converter
     }
 
     @Bean

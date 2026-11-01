@@ -104,12 +104,18 @@ class UserService(
         if (!passwordEncoder.matches(request.currentPassword, user.password)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect")
         }
-        userRepository.save(
-            user.copy(
-                password = passwordEncoder.encode(request.newPassword)!!,
-                passwordExpiration = null,
-            ),
-        )
+        storePassword(user, request.newPassword)
+    }
+
+    fun renewExpiredPassword(
+        username: String,
+        newPassword: String,
+    ) {
+        val user = findByUsername(username)
+        if (passwordEncoder.matches(newPassword, user.password)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "The new password must differ from the expired one")
+        }
+        storePassword(user, newPassword)
     }
 
     fun delete(id: UUID) {
@@ -117,6 +123,18 @@ class UserService(
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "User '$id' not found")
         }
         userRepository.deleteById(id)
+    }
+
+    private fun storePassword(
+        user: User,
+        newPassword: String,
+    ) {
+        userRepository.save(
+            user.copy(
+                password = passwordEncoder.encode(newPassword)!!,
+                passwordExpiration = null,
+            ),
+        )
     }
 
     private fun withRoles(user: User): User = user.copy(roles = loadRoles(user.username)[user.username].orEmpty())

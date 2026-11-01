@@ -8,6 +8,7 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import fr.f4fez.authorizationserver.authorization.CustomRefreshTokenGenerator
 import fr.f4fez.authorizationserver.authorization.PublicClientRefreshTokenAuthenticationConverter
 import fr.f4fez.authorizationserver.authorization.PublicClientRefreshTokenAuthenticationProvider
+import fr.f4fez.authorizationserver.user.ExpiredPasswordAuthenticationFailureHandler
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -15,6 +16,7 @@ import org.springframework.core.annotation.Order
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.security.config.Customizer
+import org.springframework.security.config.ObjectPostProcessor
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
@@ -46,6 +48,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
@@ -117,13 +120,23 @@ class DefaultSecurityConfig {
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html",
+                        "/password-expired",
                     ).permitAll()
                     .requestMatchers("/users/@me", "/users/@me/password")
                     .authenticated()
                     .anyRequest()
                     .hasRole("ADMIN")
-            }.formLogin(Customizer.withDefaults())
-            .oauth2ResourceServer { resourceServer ->
+            }.formLogin { formLogin ->
+                // Not failureHandler(): it would clear the failure URL used by the default login page to show errors
+                formLogin.withObjectPostProcessor(
+                    object : ObjectPostProcessor<UsernamePasswordAuthenticationFilter> {
+                        override fun <O : UsernamePasswordAuthenticationFilter> postProcess(filter: O): O {
+                            filter.setAuthenticationFailureHandler(ExpiredPasswordAuthenticationFailureHandler())
+                            return filter
+                        }
+                    },
+                )
+            }.oauth2ResourceServer { resourceServer ->
                 resourceServer.jwt { it.jwtAuthenticationConverter(jwtAuthenticationConverter()) }
             }.cors(Customizer.withDefaults())
         return http.build()

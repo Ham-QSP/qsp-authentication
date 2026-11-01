@@ -46,6 +46,14 @@ class UserController(
     fun findCurrentUser(authentication: Authentication): UserResponse =
         UserResponse.from(userService.findByUsername(authentication.name))
 
+    @PutMapping("/@me/password")
+    @PreAuthorize("isAuthenticated()")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun changeCurrentUserPassword(
+        authentication: Authentication,
+        @Valid @RequestBody request: ChangePasswordRequest,
+    ) = userService.changePassword(authentication.name, request)
+
     @GetMapping("/{id}")
     fun findById(
         @PathVariable id: UUID,

@@ -15,8 +15,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>
 package fr.f4fez.authorizationserver.user
 
 import org.springframework.http.HttpStatus
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import java.util.UUID
 
@@ -24,18 +26,29 @@ import java.util.UUID
 class UserService(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder,
+    private val jdbcTemplate: JdbcTemplate,
 ) {
-    fun findAll(): List<User> = userRepository.findAll().toList()
+    companion object {
+        private const val DEFAULT_AUTHORITY = "ROLE_USER"
+    }
+
+    fun findAll(): List<User> {
+        val users = userRepository.findAll().toList()
+        val rolesByUsername = loadRoles()
+        return users.map { it.copy(roles = rolesByUsername[it.username].orEmpty()) }
+    }
 
     fun findById(id: UUID): User =
         userRepository
             .findById(id)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "User '$id' not found") }
+            .let(::withRoles)
 
     fun findByUsername(username: String): User =
-        userRepository.findByUsername(username)
+        userRepository.findByUsername(username)?.let(::withRoles)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User '$username' not found")
 
+    @Transactional
     fun create(request: CreateUserRequest): User {
         if (userRepository.existsByUsername(request.username)) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Username '${request.username}' is already taken")
@@ -52,9 +65,12 @@ class UserService(
                 email = request.email,
                 emailValidated = false,
             )
-        return userRepository.save(user)
+        val saved = userRepository.save(user)
+        replaceRoles(saved.username, setOf(DEFAULT_AUTHORITY))
+        return withRoles(saved)
     }
 
+    @Transactional
     fun update(
         id: UUID,
         request: UpdateUserRequest,
@@ -64,13 +80,35 @@ class UserService(
             throw ResponseStatusException(HttpStatus.CONFLICT, "Email '${request.email}' is already used")
         }
 
+        request.roles?.let(::requireKnownRoles)
+
         val updated =
             existing.copy(
                 email = request.email,
                 enabled = request.enabled,
                 password = request.password?.let { passwordEncoder.encode(it)!! } ?: existing.password,
             )
-        return userRepository.save(updated)
+        val saved = userRepository.save(updated)
+        request.roles?.let { replaceRoles(saved.username, it) }
+        return withRoles(saved)
+    }
+
+    fun changePassword(
+        username: String,
+        request: ChangePasswordRequest,
+    ) {
+        val user =
+            userRepository.findByUsername(username)
+                ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User '$username' not found")
+        if (!passwordEncoder.matches(request.currentPassword, user.password)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect")
+        }
+        userRepository.save(
+            user.copy(
+                password = passwordEncoder.encode(request.newPassword)!!,
+                passwordExpiration = null,
+            ),
+        )
     }
 
     fun delete(id: UUID) {
@@ -78,5 +116,44 @@ class UserService(
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "User '$id' not found")
         }
         userRepository.deleteById(id)
+    }
+
+    private fun withRoles(user: User): User = user.copy(roles = loadRoles(user.username)[user.username].orEmpty())
+
+    private fun loadRoles(username: String? = null): Map<String, Set<String>> {
+        val sql =
+            "select username, authority from qsp_auth_user_authorities" +
+                if (username != null) " where username = ?" else ""
+        val args = listOfNotNull(username).toTypedArray()
+        val rows = jdbcTemplate.query(sql, { rs, _ -> rs.getString("username") to rs.getString("authority") }, *args)
+        return rows.groupBy({ it.first }, { it.second }).mapValues { it.value.toSet() }
+    }
+
+    private fun requireKnownRoles(roles: Set<String>) {
+        val known: Set<String> =
+            jdbcTemplate
+                .queryForList(
+                    "select authority from qsp_auth_authorities",
+                    String::class.java,
+                ).filterNotNull()
+                .toSet()
+        val unknown = roles - known
+        if (unknown.isNotEmpty()) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown roles: ${unknown.sorted().joinToString()}")
+        }
+    }
+
+    private fun replaceRoles(
+        username: String,
+        roles: Set<String>,
+    ) {
+        jdbcTemplate.update("delete from qsp_auth_user_authorities where username = ?", username)
+        roles.forEach {
+            jdbcTemplate.update(
+                "insert into qsp_auth_user_authorities (username, authority) values (?, ?)",
+                username,
+                it,
+            )
+        }
     }
 }

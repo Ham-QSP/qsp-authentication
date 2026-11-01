@@ -16,14 +16,16 @@ package fr.f4fez.authorizationserver
 
 import com.nimbusds.jose.jwk.source.JWKSource
 import com.nimbusds.jose.proc.SecurityContext
+import fr.f4fez.authorizationserver.user.CreateUserRequest
+import fr.f4fez.authorizationserver.user.UserService
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.context.WebApplicationContext
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm
 import org.springframework.security.oauth2.jwt.JwsHeader
 import org.springframework.security.oauth2.jwt.JwtClaimsSet
@@ -35,10 +37,13 @@ import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.web.WebAppConfiguration
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
-import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import org.springframework.web.context.WebApplicationContext
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
+import kotlin.test.assertTrue
 
 @SpringBootTest
 @WebAppConfiguration
@@ -50,17 +55,30 @@ class BearerTokenAuthenticationTest {
     lateinit var securityFilterChain: FilterChainProxy
 
     private val mockMvc: MockMvc by lazy {
-        MockMvcBuilders.webAppContextSetup(context).addFilters<org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder>(securityFilterChain).build()
+        MockMvcBuilders
+            .webAppContextSetup(
+                context,
+            ).addFilters<org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder>(securityFilterChain)
+            .build()
     }
+
+    @Autowired
+    lateinit var userService: UserService
+
+    @Autowired
+    lateinit var passwordEncoder: PasswordEncoder
 
     @Autowired
     lateinit var jwkSource: JWKSource<SecurityContext>
 
-    private fun token(vararg roles: String): String {
+    private fun token(
+        subject: String,
+        vararg roles: String,
+    ): String {
         val claims =
             JwtClaimsSet
                 .builder()
-                .subject("someone")
+                .subject(subject)
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(60))
                 .claim("roles", roles.toSet())
@@ -75,7 +93,7 @@ class BearerTokenAuthenticationTest {
             .perform(
                 get("/users")
                     .accept(MediaType.APPLICATION_JSON)
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer ${token("ADMIN")}"),
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer ${token("someone", "ADMIN")}"),
             ).andExpect(status().isOk)
     }
 
@@ -85,7 +103,7 @@ class BearerTokenAuthenticationTest {
             .perform(
                 get("/users")
                     .accept(MediaType.APPLICATION_JSON)
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer ${token("USER")}"),
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer ${token("someone", "USER")}"),
             ).andExpect(status().isForbidden)
     }
 
@@ -95,6 +113,34 @@ class BearerTokenAuthenticationTest {
             .perform(
                 get("/users")
                     .accept(MediaType.APPLICATION_JSON)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer garbage"),
+            ).andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `non admin can change own password through users me password`() {
+        userService.create(
+            CreateUserRequest(username = "pwd-self", password = "old-password", email = "pwd-self@localhost"),
+        )
+
+        mockMvc
+            .perform(
+                put("/users/@me/password")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"currentPassword":"old-password","newPassword":"new-password"}""")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer ${token("pwd-self", "USER")}"),
+            ).andExpect(status().isNoContent)
+
+        assertTrue(passwordEncoder.matches("new-password", userService.findByUsername("pwd-self").password))
+    }
+
+    @Test
+    fun `change password with an invalid bearer token is unauthorized`() {
+        mockMvc
+            .perform(
+                put("/users/@me/password")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"currentPassword":"a","newPassword":"b"}""")
                     .header(HttpHeaders.AUTHORIZATION, "Bearer garbage"),
             ).andExpect(status().isUnauthorized)
     }

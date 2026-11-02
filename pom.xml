@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.1</version>
+        <version>4.1.2</version>
         <relativePath /> <!-- lookup parent from repository -->
     </parent>
     <groupId>fr.f4fez</groupId>
@@ -34,7 +34,7 @@
         <kotlin.version>2.4.21</kotlin.version>
         <maven-release-plugin.version>3.3.1</maven-release-plugin.version>
         <testcontainers.version>1.21.4</testcontainers.version>
-        <springdoc-openapi.version>3.1.1</springdoc-openapi.version>
+        <springdoc-openapi.version>3.2.0</springdoc-openapi.version>
         <!-- Ahead of the Spring Boot 4.1.1 BOM (11.0.24), which is affected by
              GHSA-9xv2-5v5q-p794, GHSA-gcx9-497g-6cp6 and GHSA-h3x4-894j-xpx5.
              Drop this override once the BOM catches up. -->

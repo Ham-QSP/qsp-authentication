@@ -41,6 +41,7 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.LocalDateTime
+import java.util.Optional
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
@@ -102,7 +103,7 @@ class CurrentUserTokenCustomizerTest {
             email = user.email,
             enabled = enabled,
             roles = roles,
-            passwordExpiration = passwordExpiration,
+            passwordExpiration = passwordExpiration?.let { Optional.of(it) },
         ),
     )
 

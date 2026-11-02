@@ -49,6 +49,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.context.WebApplicationContext
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
+import java.util.UUID
 import kotlin.test.assertTrue
 
 @SpringBootTest
@@ -100,6 +101,48 @@ class BearerTokenAuthenticationTest {
                 .build()
         val header = JwsHeader.with(SignatureAlgorithm.RS256).build()
         return NimbusJwtEncoder(jwkSource).encode(JwtEncoderParameters.from(header, claims)).tokenValue
+    }
+
+    private fun adminUpdate(
+        id: UUID,
+        json: String,
+    ) = mockMvc.perform(
+        put("/users/$id")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(json)
+            .header(HttpHeaders.AUTHORIZATION, "Bearer ${token("someone", "ADMIN")}"),
+    )
+
+    @Test
+    fun `admin update without passwordExpiration keeps it`() {
+        val user =
+            userService.create(
+                CreateUserRequest(username = "json-keep", password = "secret", email = "json-keep@localhost"),
+            )
+        adminUpdate(
+            user.id!!,
+            """{"email":"json-keep@localhost","enabled":true,"passwordExpiration":"2030-01-02T03:04:05"}""",
+        ).andExpect(status().isOk)
+
+        adminUpdate(user.id!!, """{"email":"json-keep@localhost","enabled":false}""")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.passwordExpiration").value("2030-01-02T03:04:05"))
+    }
+
+    @Test
+    fun `admin update with a null passwordExpiration clears it`() {
+        val user =
+            userService.create(
+                CreateUserRequest(username = "json-clear", password = "secret", email = "json-clear@localhost"),
+            )
+        adminUpdate(
+            user.id!!,
+            """{"email":"json-clear@localhost","enabled":true,"passwordExpiration":"2030-01-02T03:04:05"}""",
+        ).andExpect(status().isOk)
+
+        adminUpdate(user.id!!, """{"email":"json-clear@localhost","enabled":true,"passwordExpiration":null}""")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.passwordExpiration").doesNotExist())
     }
 
     private fun corsPreflight(method: String) =

@@ -14,9 +14,13 @@ FROM eclipse-temurin:25-jre
 # in the base layer. It is gone from the final filesystem, which is what stops
 # it from being executed and from being reported.
 RUN rm -f /usr/bin/pebble
+# Run as an unprivileged user. The application files stay owned by root, so the
+# process can read them but not modify them.
+RUN groupadd --system qsp && useradd --system --gid qsp --no-create-home --shell /usr/sbin/nologin qsp
 WORKDIR /application
 COPY --from=builder /builder/extracted/dependencies/ ./
 COPY --from=builder /builder/extracted/snapshot-dependencies/ ./
 COPY --from=builder /builder/extracted/spring-boot-loader/ ./
 COPY --from=builder /builder/extracted/application/ ./
+USER qsp
 ENTRYPOINT ["java", "-jar", "application.jar"]

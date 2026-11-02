@@ -224,6 +224,8 @@ class DefaultSecurityConfig {
         config.addAllowedHeader("*")
         config.addAllowedMethod(HttpMethod.GET)
         config.addAllowedMethod(HttpMethod.POST)
+        config.addAllowedMethod(HttpMethod.PUT)
+        config.addAllowedMethod(HttpMethod.DELETE)
         authorizationProperties.clients.values
             .flatMap(ClientProperties::redirectUri)
             .map(::originFromRedirectUri)

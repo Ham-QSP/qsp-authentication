@@ -22,6 +22,8 @@ import org.hamcrest.Matchers.containsInAnyOrder
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpHeaders
@@ -38,7 +40,9 @@ import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.web.WebAppConfiguration
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
@@ -96,6 +100,21 @@ class BearerTokenAuthenticationTest {
                 .build()
         val header = JwsHeader.with(SignatureAlgorithm.RS256).build()
         return NimbusJwtEncoder(jwkSource).encode(JwtEncoderParameters.from(header, claims)).tokenValue
+    }
+
+    private fun corsPreflight(method: String) =
+        mockMvc.perform(
+            options("/users/@me")
+                .header(HttpHeaders.ORIGIN, "http://localhost:3000")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, method),
+        )
+
+    @ParameterizedTest
+    @ValueSource(strings = ["GET", "POST", "PUT", "DELETE"])
+    fun `client origin may call the user api with every method it exposes`(method: String) {
+        corsPreflight(method)
+            .andExpect(status().isOk)
+            .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:3000"))
     }
 
     private fun getCurrentUser(token: String) =

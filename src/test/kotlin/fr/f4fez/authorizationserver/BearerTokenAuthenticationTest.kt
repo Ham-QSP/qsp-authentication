@@ -18,6 +18,7 @@ import com.nimbusds.jose.jwk.source.JWKSource
 import com.nimbusds.jose.proc.SecurityContext
 import fr.f4fez.authorizationserver.user.CreateUserRequest
 import fr.f4fez.authorizationserver.user.UserService
+import org.hamcrest.Matchers.containsInAnyOrder
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
@@ -38,6 +39,7 @@ import org.springframework.test.context.web.WebAppConfiguration
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.context.WebApplicationContext
@@ -143,6 +145,62 @@ class BearerTokenAuthenticationTest {
                     .content("""{"currentPassword":"a","newPassword":"b"}""")
                     .header(HttpHeaders.AUTHORIZATION, "Bearer garbage"),
             ).andExpect(status().isUnauthorized)
+    }
+
+    private fun searchByEmail(
+        email: String?,
+        bearer: String,
+    ) = mockMvc.perform(
+        get("/users/search")
+            .apply { if (email != null) param("email", email) }
+            .accept(MediaType.APPLICATION_JSON)
+            .header(HttpHeaders.AUTHORIZATION, "Bearer $bearer"),
+    )
+
+    private fun createSearchableUser(username: String) {
+        userService.create(
+            CreateUserRequest(username = username, password = "old-password", email = "$username@localhost"),
+        )
+    }
+
+    @Test
+    fun `user role can search by email and only gets id and username`() {
+        createSearchableUser("search-user-role")
+
+        searchByEmail("SEARCH-USER-ROLE@localhost", token("someone", "USER"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].username").value("search-user-role"))
+            .andExpect(jsonPath("$[0].keys()").value(containsInAnyOrder("id", "username")))
+    }
+
+    @Test
+    fun `admin role can search by email`() {
+        createSearchableUser("search-admin-role")
+
+        searchByEmail("search-admin-role@localhost", token("someone", "ADMIN"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$[0].username").value("search-admin-role"))
+    }
+
+    @Test
+    fun `search without any known role is forbidden`() {
+        searchByEmail("someone@localhost", token("someone")).andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `search with an invalid bearer token is unauthorized`() {
+        searchByEmail("someone@localhost", "garbage").andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `search with an invalid email is rejected`() {
+        searchByEmail("%", token("someone", "USER")).andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `search without email is rejected`() {
+        searchByEmail(null, token("someone", "USER")).andExpect(status().isBadRequest)
     }
 
     companion object {

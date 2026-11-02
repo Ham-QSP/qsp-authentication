@@ -45,6 +45,8 @@ class UserService(
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "User '$id' not found") }
             .let(::withRoles)
 
+    fun findByEmail(email: String): List<User> = userRepository.findAllByEmailIgnoreCase(email.trim())
+
     fun findByUsername(username: String): User =
         userRepository.findByUsername(username)?.let(::withRoles)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User '$username' not found")

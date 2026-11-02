@@ -124,6 +124,8 @@ class DefaultSecurityConfig {
                     ).permitAll()
                     .requestMatchers("/users/@me", "/users/@me/password")
                     .authenticated()
+                    .requestMatchers(HttpMethod.GET, "/users/search")
+                    .hasAnyRole("ADMIN", "USER")
                     .anyRequest()
                     .hasRole("ADMIN")
             }.formLogin { formLogin ->

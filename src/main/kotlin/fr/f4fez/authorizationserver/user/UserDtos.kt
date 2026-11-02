@@ -77,3 +77,13 @@ data class ChangePasswordRequest(
     @field:Size(max = 100)
     val newPassword: String,
 )
+
+data class UserSummaryResponse(
+    val id: UUID,
+    val username: String,
+) {
+    companion object {
+        fun from(user: User): UserSummaryResponse =
+            UserSummaryResponse(id = requireNotNull(user.id), username = user.username)
+    }
+}

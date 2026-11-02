@@ -7,8 +7,6 @@ spring:
     username: postgres
     password: pgpass
 
-  mvc:
-    log-request-details: true
 logging:
   level:
     root: INFO

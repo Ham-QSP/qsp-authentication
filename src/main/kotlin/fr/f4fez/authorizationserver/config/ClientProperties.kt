@@ -24,6 +24,7 @@ class AuthorizationProperties {
 
 class ClientProperties {
     var redirectUri: List<String> = emptyList()
+    var postLogoutRedirectUris: List<String> = emptyList()
     var accessTokenTimeToLive: Long = 3
     var refreshTokenTimeToLive: Long = 360
 }

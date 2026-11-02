@@ -164,6 +164,8 @@ class DefaultSecurityConfig {
         config.addAllowedHeader("*")
         config.addAllowedMethod(HttpMethod.GET)
         config.addAllowedMethod(HttpMethod.POST)
+        config.addAllowedMethod(HttpMethod.DELETE)
+        config.addAllowedMethod(HttpMethod.PUT)
         authorizationProperties.clients.values
             .flatMap(ClientProperties::redirectUri)
             .map(::originFromRedirectUri)
@@ -229,6 +231,7 @@ class DefaultSecurityConfig {
                         ).tokenSettings(tokenSettings)
 
                 clientProperties.redirectUri.forEach(clientBuilder::redirectUri)
+                clientProperties.postLogoutRedirectUris.forEach(clientBuilder::postLogoutRedirectUri)
                 clientBuilder.build()
             }
 

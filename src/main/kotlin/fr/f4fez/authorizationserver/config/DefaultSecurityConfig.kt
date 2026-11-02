@@ -301,6 +301,7 @@ class DefaultSecurityConfig {
                         ).tokenSettings(tokenSettings)
 
                 clientProperties.redirectUri.forEach(clientBuilder::redirectUri)
+                clientProperties.postLogoutRedirectUris.forEach(clientBuilder::postLogoutRedirectUri)
                 clientBuilder.build()
             }
 

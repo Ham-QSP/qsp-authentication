@@ -9,6 +9,8 @@ qsp.authorization:
     portal:
       redirect-uri:
         - "http://localhost:3000"
+      post-logout-redirect-uris:
+        - "http://localhost:3000/logout-done"
       access-token-time-to-live: 3
       refresh-token-time-to-live: 720
       user-api-access: true

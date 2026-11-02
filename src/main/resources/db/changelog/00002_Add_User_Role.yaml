@@ -22,3 +22,18 @@ databaseChangeLog:
            - column:
                name: authority
                value: 'ROLE_USER'
+
+- changeSet:
+    id:  4
+    author:  "Florian MAZEN"
+    changes:
+      - dropForeignKeyConstraint:
+          baseTableName: qsp_auth_user_authorities
+          constraintName: fk_authorities_users
+      - addForeignKeyConstraint:
+          baseTableName: qsp_auth_user_authorities
+          baseColumnNames: username
+          constraintName: fk_authorities_users
+          referencedTableName: qsp_auth_users
+          referencedColumnNames: username
+          onDelete: CASCADE

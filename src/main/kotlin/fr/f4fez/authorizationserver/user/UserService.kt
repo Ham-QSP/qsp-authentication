@@ -20,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
+import java.time.LocalDateTime
 import java.util.UUID
 
 @Service
@@ -92,7 +93,15 @@ class UserService(
             existing.copy(
                 email = request.email,
                 enabled = request.enabled,
-                passwordExpiration = request.passwordExpiration,
+                passwordExpiration =
+                    when {
+                        request.passwordExpiration != null -> request.passwordExpiration.orElse(null)
+
+                        // A password chosen by an admin must be replaced by the user at the next login
+                        request.password != null -> LocalDateTime.now()
+
+                        else -> existing.passwordExpiration
+                    },
                 password = request.password?.let { passwordEncoder.encode(it)!! } ?: existing.password,
             )
         val saved = userRepository.save(updated)

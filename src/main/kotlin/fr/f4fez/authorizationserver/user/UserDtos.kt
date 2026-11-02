@@ -18,6 +18,7 @@ import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 import java.time.LocalDateTime
+import java.util.Optional
 import java.util.UUID
 
 data class UserResponse(
@@ -66,7 +67,8 @@ data class UpdateUserRequest(
     @field:Size(max = 100)
     val password: String? = null,
     val roles: Set<String>? = null,
-    val passwordExpiration: LocalDateTime? = null,
+    // Absent: unchanged. Null: cleared.
+    val passwordExpiration: Optional<LocalDateTime>? = null,
 )
 
 data class ChangePasswordRequest(

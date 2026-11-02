@@ -27,8 +27,10 @@ import org.springframework.test.context.DynamicPropertySource
 import org.springframework.web.server.ResponseStatusException
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.LocalDateTime
+import java.util.Optional
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -100,31 +102,79 @@ class UserPasswordTest {
         val updated =
             userService.update(
                 user.id!!,
-                UpdateUserRequest(email = "exp-set@localhost", enabled = true, passwordExpiration = expiration),
+                UpdateUserRequest(
+                    email = "exp-set@localhost",
+                    enabled = true,
+                    passwordExpiration = Optional.of(expiration),
+                ),
             )
 
         assertEquals(expiration, updated.passwordExpiration)
         assertEquals(expiration, userService.findById(user.id!!).passwordExpiration)
     }
 
-    @Test
-    fun `update without password expiration clears it`() {
-        val user = createUser("exp-clear")
+    private fun expireIn2030(user: User) =
         userService.update(
             user.id!!,
-            UpdateUserRequest(
-                email = "exp-clear@localhost",
-                enabled = true,
-                passwordExpiration = LocalDateTime.of(2030, 1, 2, 3, 4, 5),
-            ),
+            UpdateUserRequest(email = user.email, enabled = true, passwordExpiration = Optional.of(EXPIRATION_2030)),
         )
 
-        userService.update(user.id!!, UpdateUserRequest(email = "exp-clear@localhost", enabled = true))
+    @Test
+    fun `update without password expiration keeps it`() {
+        val user = createUser("exp-keep")
+        expireIn2030(user)
+
+        userService.update(user.id!!, UpdateUserRequest(email = "exp-keep@localhost", enabled = false))
+
+        assertEquals(EXPIRATION_2030, userService.findById(user.id!!).passwordExpiration)
+    }
+
+    @Test
+    fun `update with an empty password expiration clears it`() {
+        val user = createUser("exp-clear")
+        expireIn2030(user)
+
+        userService.update(
+            user.id!!,
+            UpdateUserRequest(email = "exp-clear@localhost", enabled = true, passwordExpiration = Optional.empty()),
+        )
 
         assertNull(userService.findById(user.id!!).passwordExpiration)
     }
 
+    @Test
+    fun `password set by an admin expires immediately, so the user must choose their own`() {
+        val user = createUser("exp-reset")
+
+        userService.update(
+            user.id!!,
+            UpdateUserRequest(email = "exp-reset@localhost", enabled = true, password = "temporary"),
+        )
+
+        val expiration = assertNotNull(userService.findById(user.id!!).passwordExpiration)
+        assertFalse(expiration.isAfter(LocalDateTime.now()))
+    }
+
+    @Test
+    fun `password set by an admin keeps an explicitly given expiration`() {
+        val user = createUser("exp-reset-explicit")
+
+        userService.update(
+            user.id!!,
+            UpdateUserRequest(
+                email = "exp-reset-explicit@localhost",
+                enabled = true,
+                password = "temporary",
+                passwordExpiration = Optional.of(EXPIRATION_2030),
+            ),
+        )
+
+        assertEquals(EXPIRATION_2030, userService.findById(user.id!!).passwordExpiration)
+    }
+
     companion object {
+        private val EXPIRATION_2030: LocalDateTime = LocalDateTime.of(2030, 1, 2, 3, 4, 5)
+
         var postgres: PostgreSQLContainer<*> = PostgreSQLContainer("postgres:17-alpine")
 
         @BeforeAll

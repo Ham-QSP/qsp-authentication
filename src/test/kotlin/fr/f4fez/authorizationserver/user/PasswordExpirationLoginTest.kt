@@ -27,6 +27,7 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.LocalDateTime
+import java.util.Optional
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
@@ -56,7 +57,11 @@ class PasswordExpirationLoginTest {
             )
         userService.update(
             user.id!!,
-            UpdateUserRequest(email = user.email, enabled = true, passwordExpiration = passwordExpiration),
+            UpdateUserRequest(
+                email = user.email,
+                enabled = true,
+                passwordExpiration = Optional.ofNullable(passwordExpiration),
+            ),
         )
     }
 

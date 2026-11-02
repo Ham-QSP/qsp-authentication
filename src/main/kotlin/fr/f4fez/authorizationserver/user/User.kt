@@ -27,6 +27,7 @@ data class User(
     val username: String,
     val password: String,
     val passwordExpiration: LocalDateTime? = null,
+    val passwordChangedAt: LocalDateTime? = null,
     val enabled: Boolean,
     val email: String,
     val emailValidated: Boolean,

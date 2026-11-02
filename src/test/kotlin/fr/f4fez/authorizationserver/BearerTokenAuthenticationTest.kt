@@ -76,17 +76,63 @@ class BearerTokenAuthenticationTest {
     private fun token(
         subject: String,
         vararg roles: String,
+    ): String = signedToken(subject, roles.toSet(), audience = "portal", scope = setOf("openid"))
+
+    private fun signedToken(
+        subject: String,
+        roles: Set<String>,
+        audience: String,
+        scope: Set<String>?,
     ): String {
         val claims =
             JwtClaimsSet
                 .builder()
                 .subject(subject)
+                .audience(listOf(audience))
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(60))
-                .claim("roles", roles.toSet())
+                .claim("roles", roles)
+                .apply { scope?.let { claim("scope", it) } }
                 .build()
         val header = JwsHeader.with(SignatureAlgorithm.RS256).build()
         return NimbusJwtEncoder(jwkSource).encode(JwtEncoderParameters.from(header, claims)).tokenValue
+    }
+
+    private fun getCurrentUser(token: String) =
+        mockMvc.perform(
+            get("/users/@me")
+                .accept(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer $token"),
+        )
+
+    @Test
+    fun `access token issued to a client allowed on the user api is accepted`() {
+        userService.create(
+            CreateUserRequest(username = "aud-portal", password = "secret", email = "aud-portal@localhost"),
+        )
+
+        getCurrentUser(signedToken("aud-portal", setOf("USER"), audience = "portal", scope = setOf("openid")))
+            .andExpect(status().isOk)
+    }
+
+    @Test
+    fun `token without scope, such as an ID token, is rejected`() {
+        userService.create(
+            CreateUserRequest(username = "aud-id-token", password = "secret", email = "aud-id-token@localhost"),
+        )
+
+        getCurrentUser(signedToken("aud-id-token", setOf("USER"), audience = "portal", scope = null))
+            .andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `token issued to a client not allowed on the user api is rejected`() {
+        userService.create(
+            CreateUserRequest(username = "aud-other", password = "secret", email = "aud-other@localhost"),
+        )
+
+        getCurrentUser(signedToken("aud-other", setOf("ADMIN"), audience = "other", scope = setOf("openid")))
+            .andExpect(status().isUnauthorized)
     }
 
     @Test

@@ -11,6 +11,10 @@ qsp.authorization:
         - "http://localhost:3000"
       access-token-time-to-live: 3
       refresh-token-time-to-live: 720
+      user-api-access: true
+    other:
+      redirect-uri:
+        - "http://localhost:4000"
 
 qsp.password-policy:
   min-length: 1

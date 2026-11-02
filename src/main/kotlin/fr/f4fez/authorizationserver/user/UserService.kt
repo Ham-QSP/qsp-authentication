@@ -29,6 +29,7 @@ class UserService(
     private val passwordEncoder: PasswordEncoder,
     private val jdbcTemplate: JdbcTemplate,
     private val passwordPolicy: PasswordPolicy,
+    private val loginAttemptLimiter: LoginAttemptLimiter,
 ) {
     companion object {
         private const val DEFAULT_AUTHORITY = "ROLE_USER"
@@ -47,6 +48,8 @@ class UserService(
             .let(::withRoles)
 
     fun findByEmail(email: String): List<User> = userRepository.findAllByEmailIgnoreCase(email.trim())
+
+    fun findByUsernameOrNull(username: String): User? = userRepository.findByUsername(username)?.let(::withRoles)
 
     fun findByUsername(username: String): User =
         userRepository.findByUsername(username)?.let(::withRoles)
@@ -103,6 +106,7 @@ class UserService(
                         else -> existing.passwordExpiration
                     },
                 password = request.password?.let { passwordEncoder.encode(it)!! } ?: existing.password,
+                passwordChangedAt = if (request.password != null) LocalDateTime.now() else existing.passwordChangedAt,
             )
         val saved = userRepository.save(updated)
         request.roles?.let { replaceRoles(saved.username, it) }
@@ -116,9 +120,17 @@ class UserService(
         val user =
             userRepository.findByUsername(username)
                 ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User '$username' not found")
+        if (loginAttemptLimiter.isLocked(username)) {
+            throw ResponseStatusException(
+                HttpStatus.TOO_MANY_REQUESTS,
+                ThrottledDaoAuthenticationProvider.LOCKED_MESSAGE,
+            )
+        }
         if (!passwordEncoder.matches(request.currentPassword, user.password)) {
+            loginAttemptLimiter.recordFailure(username)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect")
         }
+        loginAttemptLimiter.recordSuccess(username)
         passwordPolicy.requireValid(user.username, request.newPassword)
         storePassword(user, request.newPassword)
     }
@@ -150,6 +162,7 @@ class UserService(
             user.copy(
                 password = passwordEncoder.encode(newPassword)!!,
                 passwordExpiration = null,
+                passwordChangedAt = LocalDateTime.now(),
             ),
         )
     }

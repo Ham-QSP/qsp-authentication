@@ -22,6 +22,8 @@ import org.hamcrest.Matchers.containsInAnyOrder
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpHeaders
@@ -38,7 +40,9 @@ import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.web.WebAppConfiguration
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
@@ -77,14 +81,23 @@ class BearerTokenAuthenticationTest {
     private fun token(
         subject: String,
         vararg roles: String,
+    ): String = signedToken(subject, roles.toSet(), audience = "portal", scope = setOf("openid"))
+
+    private fun signedToken(
+        subject: String,
+        roles: Set<String>,
+        audience: String,
+        scope: Set<String>?,
     ): String {
         val claims =
             JwtClaimsSet
                 .builder()
                 .subject(subject)
+                .audience(listOf(audience))
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(60))
-                .claim("roles", roles.toSet())
+                .claim("roles", roles)
+                .apply { scope?.let { claim("scope", it) } }
                 .build()
         val header = JwsHeader.with(SignatureAlgorithm.RS256).build()
         return NimbusJwtEncoder(jwkSource).encode(JwtEncoderParameters.from(header, claims)).tokenValue
@@ -130,6 +143,58 @@ class BearerTokenAuthenticationTest {
         adminUpdate(user.id!!, """{"email":"json-clear@localhost","enabled":true,"passwordExpiration":null}""")
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.passwordExpiration").doesNotExist())
+    }
+
+    private fun corsPreflight(method: String) =
+        mockMvc.perform(
+            options("/users/@me")
+                .header(HttpHeaders.ORIGIN, "http://localhost:3000")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, method),
+        )
+
+    @ParameterizedTest
+    @ValueSource(strings = ["GET", "POST", "PUT", "DELETE"])
+    fun `client origin may call the user api with every method it exposes`(method: String) {
+        corsPreflight(method)
+            .andExpect(status().isOk)
+            .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:3000"))
+    }
+
+    private fun getCurrentUser(token: String) =
+        mockMvc.perform(
+            get("/users/@me")
+                .accept(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer $token"),
+        )
+
+    @Test
+    fun `access token issued to a client allowed on the user api is accepted`() {
+        userService.create(
+            CreateUserRequest(username = "aud-portal", password = "secret", email = "aud-portal@localhost"),
+        )
+
+        getCurrentUser(signedToken("aud-portal", setOf("USER"), audience = "portal", scope = setOf("openid")))
+            .andExpect(status().isOk)
+    }
+
+    @Test
+    fun `token without scope, such as an ID token, is rejected`() {
+        userService.create(
+            CreateUserRequest(username = "aud-id-token", password = "secret", email = "aud-id-token@localhost"),
+        )
+
+        getCurrentUser(signedToken("aud-id-token", setOf("USER"), audience = "portal", scope = null))
+            .andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `token issued to a client not allowed on the user api is rejected`() {
+        userService.create(
+            CreateUserRequest(username = "aud-other", password = "secret", email = "aud-other@localhost"),
+        )
+
+        getCurrentUser(signedToken("aud-other", setOf("ADMIN"), audience = "other", scope = setOf("openid")))
+            .andExpect(status().isUnauthorized)
     }
 
     @Test

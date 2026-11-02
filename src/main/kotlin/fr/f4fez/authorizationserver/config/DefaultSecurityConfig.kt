@@ -5,35 +5,43 @@ import com.nimbusds.jose.jwk.source.JWKSource
 import com.nimbusds.jose.proc.JWSVerificationKeySelector
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
+import fr.f4fez.authorizationserver.authorization.CurrentUserTokenCustomizer
 import fr.f4fez.authorizationserver.authorization.CustomRefreshTokenGenerator
 import fr.f4fez.authorizationserver.authorization.PublicClientRefreshTokenAuthenticationConverter
 import fr.f4fez.authorizationserver.authorization.PublicClientRefreshTokenAuthenticationProvider
 import fr.f4fez.authorizationserver.user.ExpiredPasswordAuthenticationFailureHandler
+import fr.f4fez.authorizationserver.user.LoginAttemptLimiter
+import fr.f4fez.authorizationserver.user.ThrottledDaoAuthenticationProvider
+import fr.f4fez.authorizationserver.user.UserService
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.Order
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
+import org.springframework.security.authentication.AuthenticationProvider
 import org.springframework.security.config.Customizer
 import org.springframework.security.config.ObjectPostProcessor
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer
-import org.springframework.security.core.Authentication
-import org.springframework.security.core.authority.AuthorityUtils
 import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.security.crypto.factory.PasswordEncoderFactories
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.oauth2.core.AuthorizationGrantType
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod
 import org.springframework.security.oauth2.core.OAuth2RefreshToken
+import org.springframework.security.oauth2.core.OAuth2TokenIntrospectionClaimNames
+import org.springframework.security.oauth2.core.OAuth2TokenValidator
 import org.springframework.security.oauth2.core.oidc.OidcScopes
+import org.springframework.security.oauth2.jwt.Jwt
+import org.springframework.security.oauth2.jwt.JwtClaimNames
+import org.springframework.security.oauth2.jwt.JwtClaimValidator
 import org.springframework.security.oauth2.jwt.JwtDecoder
+import org.springframework.security.oauth2.jwt.JwtValidators
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder
-import org.springframework.security.oauth2.server.authorization.OAuth2TokenType
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository
@@ -54,17 +62,18 @@ import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import java.net.URI
-import java.util.Collections
+import java.time.Clock
 import java.util.UUID
-import java.util.function.Consumer
-import java.util.function.Function
-import java.util.stream.Collectors
 import javax.sql.DataSource
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 
 @Configuration
-@EnableConfigurationProperties(AuthorizationProperties::class, PasswordPolicyProperties::class)
+@EnableConfigurationProperties(
+    AuthorizationProperties::class,
+    PasswordPolicyProperties::class,
+    LoginThrottlingProperties::class,
+)
 @EnableWebSecurity
 @EnableMethodSecurity
 class DefaultSecurityConfig {
@@ -112,7 +121,11 @@ class DefaultSecurityConfig {
 
     @Bean
     @Order(2)
-    fun defaultSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
+    fun defaultSecurityFilterChain(
+        http: HttpSecurity,
+        jwkSource: JWKSource<SecurityContext>,
+        authorizationProperties: AuthorizationProperties,
+    ): SecurityFilterChain {
         http
             .authorizeHttpRequests { authorizeRequest ->
                 authorizeRequest
@@ -139,16 +152,49 @@ class DefaultSecurityConfig {
                     },
                 )
             }.oauth2ResourceServer { resourceServer ->
-                resourceServer.jwt { it.jwtAuthenticationConverter(jwtAuthenticationConverter()) }
+                resourceServer.jwt {
+                    it
+                        .decoder(userApiJwtDecoder(jwkSource, authorizationProperties))
+                        .jwtAuthenticationConverter(jwtAuthenticationConverter())
+                }
             }.cors(Customizer.withDefaults())
         return http.build()
     }
 
     @Bean
-    fun jwtDecoder(jwkSource: JWKSource<SecurityContext>): JwtDecoder {
+    fun jwtDecoder(jwkSource: JWKSource<SecurityContext>): JwtDecoder = accessTokenDecoder(jwkSource)
+
+    /**
+     * Decodes access tokens only: ID tokens are signed with the same key but carry no scope.
+     */
+    private fun accessTokenDecoder(
+        jwkSource: JWKSource<SecurityContext>,
+        vararg validators: OAuth2TokenValidator<Jwt>,
+    ): JwtDecoder {
         val jwtProcessor = DefaultJWTProcessor<SecurityContext>()
         jwtProcessor.jwsKeySelector = JWSVerificationKeySelector(JWSAlgorithm.RS256, jwkSource)
-        return NimbusJwtDecoder(jwtProcessor)
+        val scopeValidator =
+            JwtClaimValidator<Any>(OAuth2TokenIntrospectionClaimNames.SCOPE) { scope ->
+                (scope is Collection<*> && scope.isNotEmpty()) || (scope is String && scope.isNotBlank())
+            }
+        return NimbusJwtDecoder(jwtProcessor).apply {
+            setJwtValidator(JwtValidators.createDefaultWithValidators(scopeValidator, *validators))
+        }
+    }
+
+    private fun userApiJwtDecoder(
+        jwkSource: JWKSource<SecurityContext>,
+        authorizationProperties: AuthorizationProperties,
+    ): JwtDecoder {
+        val allowedAudiences =
+            authorizationProperties.clients
+                .filterValues(ClientProperties::userApiAccess)
+                .keys
+        val audienceValidator =
+            JwtClaimValidator<List<String>>(JwtClaimNames.AUD) { audience ->
+                audience.orEmpty().any(allowedAudiences::contains)
+            }
+        return accessTokenDecoder(jwkSource, audienceValidator)
     }
 
     private fun jwtAuthenticationConverter(): JwtAuthenticationConverter {
@@ -178,6 +224,8 @@ class DefaultSecurityConfig {
         config.addAllowedHeader("*")
         config.addAllowedMethod(HttpMethod.GET)
         config.addAllowedMethod(HttpMethod.POST)
+        config.addAllowedMethod(HttpMethod.PUT)
+        config.addAllowedMethod(HttpMethod.DELETE)
         authorizationProperties.clients.values
             .flatMap(ClientProperties::redirectUri)
             .map(::originFromRedirectUri)
@@ -194,6 +242,9 @@ class DefaultSecurityConfig {
     }
 
     @Bean
+    fun clock(): Clock = Clock.systemUTC()
+
+    @Bean
     fun passwordEncoder(): PasswordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder()
 
     @Bean
@@ -204,6 +255,13 @@ class DefaultSecurityConfig {
         service.setDataSource(datasource)
         return service
     }
+
+    @Bean
+    fun authenticationProvider(
+        users: UserDetailsService,
+        passwordEncoder: PasswordEncoder,
+        loginAttemptLimiter: LoginAttemptLimiter,
+    ): AuthenticationProvider = ThrottledDaoAuthenticationProvider(users, passwordEncoder, loginAttemptLimiter)
 
     @Bean
     fun registeredClientRepository(authorizationProperties: AuthorizationProperties): RegisteredClientRepository {
@@ -250,25 +308,6 @@ class DefaultSecurityConfig {
     }
 
     @Bean
-    fun jwtTokenCustomizer(): OAuth2TokenCustomizer<JwtEncodingContext> =
-        OAuth2TokenCustomizer { context: JwtEncodingContext ->
-            if (OAuth2TokenType.ACCESS_TOKEN == context.tokenType) {
-                context.claims.claims(
-                    Consumer { claims: MutableMap<String, Any> ->
-                        val roles =
-                            AuthorityUtils
-                                .authorityListToSet(context.getPrincipal<Authentication>()!!.authorities)
-                                .stream()
-                                .map { c: String? -> c!!.replaceFirst("^ROLE_".toRegex(), "") }
-                                .collect(
-                                    Collectors.collectingAndThen(
-                                        Collectors.toSet(),
-                                        Function { s: MutableSet<String?>? -> Collections.unmodifiableSet(s) },
-                                    ),
-                                )
-                        claims["roles"] = roles
-                    },
-                )
-            }
-        }
+    fun jwtTokenCustomizer(userService: UserService): OAuth2TokenCustomizer<JwtEncodingContext> =
+        CurrentUserTokenCustomizer(userService)
 }

@@ -26,4 +26,7 @@ class ClientProperties {
     var redirectUri: List<String> = emptyList()
     var accessTokenTimeToLive: Long = 3
     var refreshTokenTimeToLive: Long = 360
+
+    // Whether access tokens issued to this client may call the user management API
+    var userApiAccess: Boolean = false
 }

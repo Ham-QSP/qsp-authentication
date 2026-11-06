@@ -46,12 +46,30 @@ class UserCreationTest {
 
         val authorities =
             jdbcTemplate.queryForList(
-                "select authority from qsp_auth_user_authorities where username = ?",
+                "select a.authority from qsp_auth_user_authorities a join qsp_auth_users u on u.id = a.user_id " +
+                    "where u.username = ?",
                 String::class.java,
                 "new-user",
             )
         assertEquals(listOf("ROLE_USER"), authorities)
     }
+
+    @Test
+    fun `findByEmail returns the roles`() {
+        createUser("email-roles")
+
+        assertEquals(setOf("ROLE_USER"), userService.findByEmail("email-roles@localhost").single().roles)
+    }
+
+    private fun createUser(username: String) =
+        userService.create(
+            CreateUserRequest(
+                username = username,
+                password = "secret",
+                email = "$username@localhost",
+                enabled = true,
+            ),
+        )
 
     companion object {
         var postgres: PostgreSQLContainer<*> = PostgreSQLContainer("postgres:17-alpine")

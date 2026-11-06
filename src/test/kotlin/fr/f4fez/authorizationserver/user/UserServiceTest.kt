@@ -45,8 +45,8 @@ class UserServiceTest {
                 ),
             )
         jdbcTemplate.update(
-            "insert into qsp_auth_user_authorities (username, authority) values (?, ?)",
-            "to-delete",
+            "insert into qsp_auth_user_authorities (user_id, authority) values (?, ?)",
+            user.id,
             "ROLE_ADMIN",
         )
 
@@ -54,9 +54,9 @@ class UserServiceTest {
 
         val remainingAuthorities =
             jdbcTemplate.queryForObject(
-                "select count(*) from qsp_auth_user_authorities where username = ?",
+                "select count(*) from qsp_auth_user_authorities where user_id = ?",
                 Int::class.java,
-                "to-delete",
+                user.id,
             )
         assertEquals(0, remainingAuthorities)
     }

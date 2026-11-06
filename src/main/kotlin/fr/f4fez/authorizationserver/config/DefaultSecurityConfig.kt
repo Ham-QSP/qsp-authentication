@@ -82,7 +82,8 @@ class DefaultSecurityConfig {
             "select username,password,enabled,password_expiration from qsp_auth_users where username = ?"
 
         private const val DEF_AUTHORITIES_BY_USERNAME_QUERY =
-            "select username,authority from qsp_auth_user_authorities where username = ?"
+            "select u.username,a.authority from qsp_auth_user_authorities a " +
+                "join qsp_auth_users u on u.id = a.user_id where u.username = ?"
     }
 
     @Bean

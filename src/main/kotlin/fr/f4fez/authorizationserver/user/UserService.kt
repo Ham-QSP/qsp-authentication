@@ -15,7 +15,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>
 package fr.f4fez.authorizationserver.user
 
 import org.springframework.http.HttpStatus
-import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -27,7 +26,7 @@ import java.util.UUID
 class UserService(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder,
-    private val jdbcTemplate: JdbcTemplate,
+    private val authorityRepository: AuthorityRepository,
     private val passwordPolicy: PasswordPolicy,
     private val loginAttemptLimiter: LoginAttemptLimiter,
 ) {
@@ -35,24 +34,19 @@ class UserService(
         private const val DEFAULT_AUTHORITY = "ROLE_USER"
     }
 
-    fun findAll(): List<User> {
-        val users = userRepository.findAll().toList()
-        val rolesByUsername = loadRoles()
-        return users.map { it.copy(roles = rolesByUsername[it.username].orEmpty()) }
-    }
+    fun findAll(): List<User> = userRepository.findAll().toList()
 
     fun findById(id: UUID): User =
         userRepository
             .findById(id)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "User '$id' not found") }
-            .let(::withRoles)
 
     fun findByEmail(email: String): List<User> = userRepository.findAllByEmailIgnoreCase(email.trim())
 
-    fun findByUsernameOrNull(username: String): User? = userRepository.findByUsername(username)?.let(::withRoles)
+    fun findByUsernameOrNull(username: String): User? = userRepository.findByUsername(username)
 
     fun findByUsername(username: String): User =
-        userRepository.findByUsername(username)?.let(::withRoles)
+        userRepository.findByUsername(username)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User '$username' not found")
 
     @Transactional
@@ -73,10 +67,9 @@ class UserService(
                 enabled = request.enabled,
                 email = request.email,
                 emailValidated = false,
+                authorities = setOf(UserAuthority(DEFAULT_AUTHORITY)),
             )
-        val saved = userRepository.save(user)
-        replaceRoles(saved.username, setOf(DEFAULT_AUTHORITY))
-        return withRoles(saved)
+        return userRepository.save(user)
     }
 
     @Transactional
@@ -107,10 +100,9 @@ class UserService(
                     },
                 password = request.password?.let { passwordEncoder.encode(it)!! } ?: existing.password,
                 passwordChangedAt = if (request.password != null) LocalDateTime.now() else existing.passwordChangedAt,
+                authorities = request.roles?.mapTo(mutableSetOf(), ::UserAuthority) ?: existing.authorities,
             )
-        val saved = userRepository.save(updated)
-        request.roles?.let { replaceRoles(saved.username, it) }
-        return withRoles(saved)
+        return userRepository.save(updated)
     }
 
     fun changePassword(
@@ -167,42 +159,10 @@ class UserService(
         )
     }
 
-    private fun withRoles(user: User): User = user.copy(roles = loadRoles(user.username)[user.username].orEmpty())
-
-    private fun loadRoles(username: String? = null): Map<String, Set<String>> {
-        val sql =
-            "select username, authority from qsp_auth_user_authorities" +
-                if (username != null) " where username = ?" else ""
-        val args = listOfNotNull(username).toTypedArray()
-        val rows = jdbcTemplate.query(sql, { rs, _ -> rs.getString("username") to rs.getString("authority") }, *args)
-        return rows.groupBy({ it.first }, { it.second }).mapValues { it.value.toSet() }
-    }
-
     private fun requireKnownRoles(roles: Set<String>) {
-        val known: Set<String> =
-            jdbcTemplate
-                .queryForList(
-                    "select authority from qsp_auth_authorities",
-                    String::class.java,
-                ).filterNotNull()
-                .toSet()
-        val unknown = roles - known
+        val unknown = roles - authorityRepository.findAllById(roles).mapTo(mutableSetOf()) { it.authority }
         if (unknown.isNotEmpty()) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown roles: ${unknown.sorted().joinToString()}")
-        }
-    }
-
-    private fun replaceRoles(
-        username: String,
-        roles: Set<String>,
-    ) {
-        jdbcTemplate.update("delete from qsp_auth_user_authorities where username = ?", username)
-        roles.forEach {
-            jdbcTemplate.update(
-                "insert into qsp_auth_user_authorities (username, authority) values (?, ?)",
-                username,
-                it,
-            )
         }
     }
 }

@@ -140,6 +140,7 @@ class DefaultSecurityConfig {
                         "/password-expired",
                         "/css/**",
                         "/login",
+                        "/error",
                     ).permitAll()
                     .requestMatchers("/users/@me", "/users/@me/password")
                     .authenticated()

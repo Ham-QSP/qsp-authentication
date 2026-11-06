@@ -18,6 +18,7 @@ import fr.f4fez.authorizationserver.user.CreateUserRequest
 import fr.f4fez.authorizationserver.user.UpdateUserRequest
 import fr.f4fez.authorizationserver.user.UserService
 import org.hamcrest.Matchers.containsString
+import org.hamcrest.Matchers.not
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
@@ -181,6 +182,55 @@ class PasswordExpiredFlowTest {
         mockMvc
             .perform(get("/password-expired").session(session))
             .andExpect(redirectedUrl("/login"))
+    }
+
+    @Test
+    fun `password change page is rendered from the shared layout`() {
+        createUser("flow-layout")
+        val session = MockHttpSession()
+        login("flow-layout", "old-password", session)
+
+        mockMvc
+            .perform(get("/password-expired").session(session))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("class=\"auth-card\"")))
+            .andExpect(content().string(containsString("The password of flow-layout has expired")))
+    }
+
+    @Test
+    fun `mismatching passwords show the error in the shared layout`() {
+        createUser("flow-mismatch-page")
+        val session = MockHttpSession()
+        login("flow-mismatch-page", "old-password", session)
+
+        submitNewPassword(session, "new-password", "other-password")
+            .andExpect(status().isBadRequest)
+            .andExpect(content().string(containsString("auth-alert--error")))
+            .andExpect(content().string(containsString("The passwords do not match")))
+    }
+
+    @Test
+    fun `success page links back to login`() {
+        createUser("flow-success-page")
+        val session = MockHttpSession()
+        login("flow-success-page", "old-password", session)
+
+        submitNewPassword(session, "new-password")
+            .andExpect(content().string(containsString("Your password has been changed.")))
+            .andExpect(content().string(containsString("href=\"/login\"")))
+            .andExpect(content().string(containsString("class=\"auth-card\"")))
+    }
+
+    @Test
+    fun `username is escaped on the password change page`() {
+        createUser("flow-<script>x</script>")
+        val session = MockHttpSession()
+        login("flow-<script>x</script>", "old-password", session)
+
+        mockMvc
+            .perform(get("/password-expired").session(session))
+            .andExpect(content().string(containsString("flow-&lt;script&gt;x&lt;/script&gt;")))
+            .andExpect(content().string(not(containsString("<script>x</script>"))))
     }
 
     @Test

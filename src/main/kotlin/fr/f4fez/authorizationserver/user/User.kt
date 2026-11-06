@@ -15,6 +15,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>
 package fr.f4fez.authorizationserver.user
 
 import org.springframework.data.annotation.Id
+import org.springframework.data.relational.core.mapping.MappedCollection
 import org.springframework.data.relational.core.mapping.Table
 import java.time.LocalDateTime
 import java.util.UUID
@@ -26,7 +27,13 @@ data class User(
     val username: String,
     val password: String,
     val passwordExpiration: LocalDateTime? = null,
+    val passwordChangedAt: LocalDateTime? = null,
     val enabled: Boolean,
     val email: String,
     val emailValidated: Boolean,
-)
+    @MappedCollection(idColumn = "user_id")
+    val authorities: Set<UserAuthority> = emptySet(),
+) {
+    val roles: Set<String>
+        get() = authorities.mapTo(mutableSetOf()) { it.authority }
+}

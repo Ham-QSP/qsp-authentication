@@ -16,6 +16,9 @@ package fr.f4fez.authorizationserver.user
 
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
+import jakarta.validation.constraints.Email
+import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Size
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
@@ -27,6 +30,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import java.net.URI
@@ -45,6 +49,19 @@ class UserController(
     @PreAuthorize("isAuthenticated()")
     fun findCurrentUser(authentication: Authentication): UserResponse =
         UserResponse.from(userService.findByUsername(authentication.name))
+
+    @PutMapping("/@me/password")
+    @PreAuthorize("isAuthenticated()")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun changeCurrentUserPassword(
+        authentication: Authentication,
+        @Valid @RequestBody request: ChangePasswordRequest,
+    ) = userService.changePassword(authentication.name, request)
+
+    @GetMapping("/search")
+    fun searchByEmail(
+        @RequestParam @NotBlank @Email @Size(max = 320) email: String,
+    ): List<UserSummaryResponse> = userService.findByEmail(email).map(UserSummaryResponse::from)
 
     @GetMapping("/{id}")
     fun findById(

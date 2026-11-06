@@ -1,0 +1,58 @@
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>
+
+
+databaseChangeLog:
+- changeSet:
+    id:  6
+    author:  "Florian MAZEN"
+    changes:
+      - addColumn:
+          tableName: qsp_auth_user_authorities
+          columns:
+            - column:
+                name: user_id
+                type: uuid
+      - sql:
+          sql: >
+            update qsp_auth_user_authorities ua set user_id = u.id
+            from qsp_auth_users u where u.username = ua.username
+      - addNotNullConstraint:
+          tableName: qsp_auth_user_authorities
+          columnName: user_id
+          columnDataType: uuid
+      - dropForeignKeyConstraint:
+          baseTableName: qsp_auth_user_authorities
+          constraintName: fk_authorities_users
+      - dropIndex:
+          tableName: qsp_auth_user_authorities
+          indexName: ix_auth_user_authorities_username_authority
+      - dropColumn:
+          tableName: qsp_auth_user_authorities
+          columnName: username
+      - addForeignKeyConstraint:
+          baseTableName: qsp_auth_user_authorities
+          baseColumnNames: user_id
+          constraintName: fk_user_authorities_user
+          referencedTableName: qsp_auth_users
+          referencedColumnNames: id
+          onDelete: CASCADE
+      - createIndex:
+          columns:
+            - column:
+                name: user_id
+            - column:
+                name: authority
+          indexName: ix_auth_user_authorities_user_id_authority
+          tableName: qsp_auth_user_authorities
+          unique: true

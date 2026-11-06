@@ -18,6 +18,7 @@ import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 import java.time.LocalDateTime
+import java.util.Optional
 import java.util.UUID
 
 data class UserResponse(
@@ -27,6 +28,7 @@ data class UserResponse(
     val enabled: Boolean,
     val emailValidated: Boolean,
     val passwordExpiration: LocalDateTime?,
+    val roles: Set<String>,
 ) {
     companion object {
         fun from(user: User): UserResponse =
@@ -37,6 +39,7 @@ data class UserResponse(
                 enabled = user.enabled,
                 emailValidated = user.emailValidated,
                 passwordExpiration = user.passwordExpiration,
+                roles = user.roles,
             )
     }
 }
@@ -63,4 +66,26 @@ data class UpdateUserRequest(
     val enabled: Boolean,
     @field:Size(max = 100)
     val password: String? = null,
+    val roles: Set<String>? = null,
+    // Absent: unchanged. Null: cleared.
+    val passwordExpiration: Optional<LocalDateTime>? = null,
 )
+
+data class ChangePasswordRequest(
+    @field:NotBlank
+    @field:Size(max = 100)
+    val currentPassword: String,
+    @field:NotBlank
+    @field:Size(max = 100)
+    val newPassword: String,
+)
+
+data class UserSummaryResponse(
+    val id: UUID,
+    val username: String,
+) {
+    companion object {
+        fun from(user: User): UserSummaryResponse =
+            UserSummaryResponse(id = requireNotNull(user.id), username = user.username)
+    }
+}

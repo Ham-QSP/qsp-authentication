@@ -8,3 +8,9 @@ databaseChangeLog:
   - include:
       file: 00002_Add_User_Role.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 00003_password_changed_at.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: 00004_user_authorities_user_id.yaml
+      relativeToChangelogFile: true

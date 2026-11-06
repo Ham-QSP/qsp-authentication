@@ -64,6 +64,15 @@ body {
     cursor: pointer;
 }
 
+.auth-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.auth-actions form {
+    flex: 1;
+}
+
 .auth-alert {
     margin: 0 0 12px;
     padding: 8px 10px;

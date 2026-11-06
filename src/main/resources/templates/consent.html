@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(#{consent.title}, ~{::content})}">
+<body>
+<div th:fragment="content">
+    <p th:text="#{consent.intro(${clientId}, ${username})}">The application wants to access your account.</p>
+    <ul>
+        <li th:each="s : ${scopes}" th:text="${#messages.msgOrNull('consent.scope.' + s)} ?: ${s}">Permission</li>
+    </ul>
+    <div class="auth-actions">
+        <form method="post" th:action="@{/oauth2/authorize}">
+            <input type="hidden" name="client_id" th:value="${clientId}">
+            <input type="hidden" name="state" th:value="${state}">
+            <input type="hidden" name="scope" th:each="s : ${scopes}" th:value="${s}">
+            <button type="submit" th:text="#{consent.accept}">Accept</button>
+        </form>
+        <form method="post" th:action="@{/oauth2/authorize}">
+            <input type="hidden" name="client_id" th:value="${clientId}">
+            <input type="hidden" name="state" th:value="${state}">
+            <button type="submit" th:text="#{consent.refuse}">Refuse</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

@@ -101,7 +101,11 @@ class DefaultSecurityConfig {
             .securityMatcher(authorizationServerConfigurer.endpointsMatcher)
             .with(
                 authorizationServerConfigurer,
-                { authorizationServer -> authorizationServer.oidc(Customizer.withDefaults()) },
+                { authorizationServer ->
+                    authorizationServer
+                        .oidc(Customizer.withDefaults())
+                        .authorizationEndpoint { it.consentPage("/oauth2/consent") }
+                },
             ).authorizeHttpRequests({ authorize ->
                 authorize
                     .anyRequest()
@@ -142,6 +146,8 @@ class DefaultSecurityConfig {
                     .requestMatchers(HttpMethod.GET, "/users/search")
                     .hasAnyRole("ADMIN", "USER")
                     .requestMatchers(HttpMethod.GET, "/logout")
+                    .authenticated()
+                    .requestMatchers("/oauth2/consent")
                     .authenticated()
                     .anyRequest()
                     .hasRole("ADMIN")

@@ -12,7 +12,7 @@ General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>
  */
-package fr.f4fez.authorizationserver.user
+package fr.f4fez.authorizationserver.authentication
 
 import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.security.authentication.CredentialsExpiredException

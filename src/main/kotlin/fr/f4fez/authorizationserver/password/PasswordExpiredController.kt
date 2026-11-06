@@ -12,9 +12,10 @@ General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>
  */
-package fr.f4fez.authorizationserver.user
+package fr.f4fez.authorizationserver.password
 
-import fr.f4fez.authorizationserver.user.ExpiredPasswordAuthenticationFailureHandler.Companion.EXPIRED_PASSWORD_USERNAME
+import fr.f4fez.authorizationserver.password.ExpiredPasswordAuthenticationFailureHandler.Companion.EXPIRED_PASSWORD_USERNAME
+import fr.f4fez.authorizationserver.user.UserService
 import io.swagger.v3.oas.annotations.Hidden
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus

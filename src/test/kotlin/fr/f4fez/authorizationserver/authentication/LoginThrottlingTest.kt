@@ -12,8 +12,11 @@ General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>
  */
-package fr.f4fez.authorizationserver.user
+package fr.f4fez.authorizationserver.authentication
 
+import fr.f4fez.authorizationserver.user.ChangePasswordRequest
+import fr.f4fez.authorizationserver.user.CreateUserRequest
+import fr.f4fez.authorizationserver.user.UserService
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test

@@ -5,13 +5,14 @@ import com.nimbusds.jose.jwk.source.JWKSource
 import com.nimbusds.jose.proc.JWSVerificationKeySelector
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
+import fr.f4fez.authorizationserver.authentication.LoginAttemptLimiter
+import fr.f4fez.authorizationserver.authentication.PasswordExpirationAwareJdbcDao
+import fr.f4fez.authorizationserver.authentication.ThrottledDaoAuthenticationProvider
 import fr.f4fez.authorizationserver.authorization.CurrentUserTokenCustomizer
 import fr.f4fez.authorizationserver.authorization.CustomRefreshTokenGenerator
 import fr.f4fez.authorizationserver.authorization.PublicClientRefreshTokenAuthenticationConverter
 import fr.f4fez.authorizationserver.authorization.PublicClientRefreshTokenAuthenticationProvider
-import fr.f4fez.authorizationserver.user.ExpiredPasswordAuthenticationFailureHandler
-import fr.f4fez.authorizationserver.user.LoginAttemptLimiter
-import fr.f4fez.authorizationserver.user.ThrottledDaoAuthenticationProvider
+import fr.f4fez.authorizationserver.password.ExpiredPasswordAuthenticationFailureHandler
 import fr.f4fez.authorizationserver.user.UserService
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean

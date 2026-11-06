@@ -14,6 +14,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>
  */
 package fr.f4fez.authorizationserver.user
 
+import fr.f4fez.authorizationserver.authentication.LoginAttemptLimiter
+import fr.f4fez.authorizationserver.authentication.ThrottledDaoAuthenticationProvider
 import org.springframework.http.HttpStatus
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service

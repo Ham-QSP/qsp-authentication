@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" th:fragment="layout(title, content)">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title}">Title</title>
+    <link rel="stylesheet" th:href="@{/css/auth.css}">
+</head>
+<body>
+<header class="auth-header" th:text="#{app.name}">QSP</header>
+<main class="auth-card">
+    <h1 th:text="${title}">Title</h1>
+    <th:block th:replace="${content}"></th:block>
+</main>
+</body>
+</html>
+
+<p class="auth-alert" th:fragment="alert(kind, text)" th:classappend="'auth-alert--' + ${kind}" role="alert" th:text="${text}">Message</p>

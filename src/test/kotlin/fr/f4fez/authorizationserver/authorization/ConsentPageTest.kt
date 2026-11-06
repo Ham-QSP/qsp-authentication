@@ -39,11 +39,13 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.context.WebApplicationContext
+import org.springframework.web.util.HtmlUtils
 import org.springframework.web.util.UriComponentsBuilder
 import org.testcontainers.containers.PostgreSQLContainer
 import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -104,10 +106,44 @@ class ConsentPageTest {
                 .queryParam("code_challenge_method", "S256"),
         )
 
+    private data class ConsentForm(
+        val action: String,
+        val fields: List<Pair<String, String>>,
+    ) {
+        fun values(name: String): List<String> = fields.filter { it.first == name }.map { it.second }
+    }
+
     private data class ConsentPage(
         val state: String,
-        val csrf: String,
+        val accept: ConsentForm,
+        val refuse: ConsentForm,
     )
+
+    private fun attribute(
+        tag: String,
+        name: String,
+    ): String? =
+        Regex("""\s$name="([^"]*)"""")
+            .find(tag)
+            ?.groupValues
+            ?.get(1)
+            ?.let(HtmlUtils::htmlUnescape)
+
+    /** Reads every POST form and its hidden inputs as a browser would submit them. */
+    private fun forms(html: String): List<ConsentForm> =
+        Regex("""<form[^>]*>.*?</form>""", RegexOption.DOT_MATCHES_ALL)
+            .findAll(html)
+            .map { form ->
+                val formTag = Regex("""<form[^>]*>""").find(form.value)!!.value
+                val fields =
+                    Regex("""<input[^>]*>""")
+                        .findAll(form.value)
+                        .map { it.value }
+                        .filter { attribute(it, "type") == "hidden" }
+                        .map { attribute(it, "name")!! to (attribute(it, "value") ?: "") }
+                        .toList()
+                ConsentForm(attribute(formTag, "action")!!, fields)
+            }.toList()
 
     private fun openConsentPage(session: MockHttpSession): ConsentPage {
         val consentUrl = authorize(session).andReturn().response.redirectedUrl!!
@@ -124,7 +160,24 @@ class ConsentPageTest {
                 .queryParams
                 .getFirst("state")
                 ?.let { URLDecoder.decode(it, StandardCharsets.UTF_8) }
-        return ConsentPage(assertNotNull(state, "No state in $consentUrl"), csrfToken(html))
+        val forms = forms(html)
+        assertEquals(2, forms.size, "Expected Accept and Refuse forms in $html")
+        return ConsentPage(assertNotNull(state, "No state in $consentUrl"), forms[0], forms[1])
+    }
+
+    private fun submit(
+        session: MockHttpSession,
+        form: ConsentForm,
+    ): String {
+        val request =
+            post(form.action)
+                .session(session)
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+        form.fields.forEach { (name, value) -> request.param(name, value) }
+        return mockMvc
+            .perform(request)
+            .andReturn()
+            .response.redirectedUrl!!
     }
 
     @Test
@@ -147,18 +200,13 @@ class ConsentPageTest {
         val session = loggedInSession("consent-accept")
         val page = openConsentPage(session)
 
-        val redirect =
-            mockMvc
-                .perform(
-                    post("/oauth2/authorize")
-                        .session(session)
-                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                        .param("client_id", "portal")
-                        .param("state", page.state)
-                        .param("scope", "profile")
-                        .param("_csrf", page.csrf),
-                ).andReturn()
-                .response.redirectedUrl!!
+        assertEquals("/oauth2/authorize", page.accept.action)
+        assertEquals(listOf("portal"), page.accept.values("client_id"))
+        assertEquals(listOf(page.state), page.accept.values("state"))
+        assertEquals(listOf("profile"), page.accept.values("scope"))
+        assertEquals(1, page.accept.values("_csrf").size)
+
+        val redirect = submit(session, page.accept)
 
         assertTrue(redirect.startsWith("http://localhost:3000"), "Redirected to $redirect")
         assertTrue(redirect.contains("code="), "Redirected to $redirect")
@@ -169,17 +217,13 @@ class ConsentPageTest {
         val session = loggedInSession("consent-refuse")
         val page = openConsentPage(session)
 
-        val redirect =
-            mockMvc
-                .perform(
-                    post("/oauth2/authorize")
-                        .session(session)
-                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                        .param("client_id", "portal")
-                        .param("state", page.state)
-                        .param("_csrf", page.csrf),
-                ).andReturn()
-                .response.redirectedUrl!!
+        assertEquals("/oauth2/authorize", page.refuse.action)
+        assertEquals(listOf("portal"), page.refuse.values("client_id"))
+        assertEquals(listOf(page.state), page.refuse.values("state"))
+        assertEquals(emptyList(), page.refuse.values("scope"))
+        assertEquals(1, page.refuse.values("_csrf").size)
+
+        val redirect = submit(session, page.refuse)
 
         assertTrue(redirect.startsWith("http://localhost:3000"), "Redirected to $redirect")
         assertTrue(redirect.contains("error=access_denied"), "Redirected to $redirect")

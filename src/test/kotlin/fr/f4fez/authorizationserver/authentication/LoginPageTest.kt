@@ -82,6 +82,7 @@ class LoginPageTest {
         mockMvc
             .perform(get("/login").header(HttpHeaders.ACCEPT_LANGUAGE, "de"))
             .andExpect(content().string(containsString("Sign in")))
+            .andExpect(content().string(containsString("lang=\"en\"")))
             .andExpect(content().string(not(containsString("??"))))
     }
 

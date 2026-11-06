@@ -156,7 +156,6 @@ class DefaultSecurityConfig {
                 formLogin
                     .loginPage("/login")
                     .failureHandler(ExpiredPasswordAuthenticationFailureHandler())
-                    .permitAll()
             }.oauth2ResourceServer { resourceServer ->
                 resourceServer.jwt {
                     it

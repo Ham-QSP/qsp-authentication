@@ -15,6 +15,7 @@ body {
 
 .auth-header {
     max-width: 360px;
+    overflow-wrap: anywhere;
     margin: 0 auto 8px;
     font-weight: 600;
     color: #52606d;
@@ -23,6 +24,7 @@ body {
 .auth-card {
     width: 100%;
     max-width: 360px;
+    overflow-wrap: anywhere;
     margin: 0 auto;
     padding: 16px;
     background: #fff;

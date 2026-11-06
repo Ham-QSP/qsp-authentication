@@ -28,6 +28,7 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.web.WebAppConfiguration
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -56,11 +57,14 @@ class ErrorPageTest {
     private fun error(
         status: Int,
         accept: MediaType,
+        customize: (MockHttpServletRequestBuilder) -> MockHttpServletRequestBuilder = { it },
     ) = mockMvc.perform(
-        get("/error")
-            .requestAttr(RequestDispatcher.ERROR_STATUS_CODE, status)
-            .requestAttr(RequestDispatcher.ERROR_REQUEST_URI, "/missing")
-            .accept(accept),
+        customize(
+            get("/error")
+                .requestAttr(RequestDispatcher.ERROR_STATUS_CODE, status)
+                .requestAttr(RequestDispatcher.ERROR_REQUEST_URI, "/missing")
+                .accept(accept),
+        ),
     )
 
     @Test
@@ -70,6 +74,17 @@ class ErrorPageTest {
             .andExpect(content().string(containsString("class=\"auth-card\"")))
             .andExpect(content().string(containsString("The page you requested does not exist.")))
             .andExpect(content().string(not(containsString("Whitelabel"))))
+    }
+
+    @Test
+    fun `browser errors never leak internal details`() {
+        error(500, MediaType.TEXT_HTML) {
+            it
+                .requestAttr(RequestDispatcher.ERROR_MESSAGE, "secret internal detail")
+                .requestAttr(RequestDispatcher.ERROR_EXCEPTION, IllegalStateException("secret internal detail"))
+        }.andExpect(status().isInternalServerError)
+            .andExpect(content().string(containsString("An unexpected error occurred. Please try again later.")))
+            .andExpect(content().string(not(containsString("secret internal detail"))))
     }
 
     @Test

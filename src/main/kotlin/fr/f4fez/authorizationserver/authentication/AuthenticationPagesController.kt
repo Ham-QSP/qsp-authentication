@@ -23,4 +23,7 @@ import org.springframework.web.bind.annotation.GetMapping
 class AuthenticationPagesController {
     @GetMapping("/login")
     fun login(): String = "login"
+
+    @GetMapping("/logout")
+    fun logout(): String = "logout"
 }

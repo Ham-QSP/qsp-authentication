@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(#{login.title}, ~{::content})}">
+<body>
+<div th:fragment="content">
+    <th:block th:if="${param.error}"><th:block th:replace="~{fragments/layout :: alert('error', #{login.error})}"></th:block></th:block>
+    <th:block th:if="${param.logout}"><th:block th:replace="~{fragments/layout :: alert('info', #{login.logout})}"></th:block></th:block>
+    <form method="post" th:action="@{/login}" class="auth-form">
+        <label for="username" th:text="#{login.username}">Username</label>
+        <input type="text" id="username" name="username" autocomplete="username" autofocus required>
+        <label for="password" th:text="#{login.password}">Password</label>
+        <input type="password" id="password" name="password" autocomplete="current-password" required>
+        <button type="submit" th:text="#{login.submit}">Sign in</button>
+    </form>
+</div>
+</body>
+</html>

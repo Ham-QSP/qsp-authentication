@@ -22,7 +22,6 @@ import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.security.authentication.AuthenticationProvider
 import org.springframework.security.config.Customizer
-import org.springframework.security.config.ObjectPostProcessor
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
@@ -57,7 +56,6 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
@@ -103,7 +101,11 @@ class DefaultSecurityConfig {
             .securityMatcher(authorizationServerConfigurer.endpointsMatcher)
             .with(
                 authorizationServerConfigurer,
-                { authorizationServer -> authorizationServer.oidc(Customizer.withDefaults()) },
+                { authorizationServer ->
+                    authorizationServer
+                        .oidc(Customizer.withDefaults())
+                        .authorizationEndpoint { it.consentPage("/oauth2/consent") }
+                },
             ).authorizeHttpRequests({ authorize ->
                 authorize
                     .anyRequest()
@@ -136,23 +138,24 @@ class DefaultSecurityConfig {
                         "/swagger-ui/**",
                         "/swagger-ui.html",
                         "/password-expired",
+                        "/css/**",
+                        "/login",
+                        "/error",
                     ).permitAll()
                     .requestMatchers("/users/@me", "/users/@me/password")
                     .authenticated()
                     .requestMatchers(HttpMethod.GET, "/users/search")
                     .hasAnyRole("ADMIN", "USER")
+                    .requestMatchers(HttpMethod.GET, "/logout")
+                    .authenticated()
+                    .requestMatchers("/oauth2/consent")
+                    .authenticated()
                     .anyRequest()
                     .hasRole("ADMIN")
             }.formLogin { formLogin ->
-                // Not failureHandler(): it would clear the failure URL used by the default login page to show errors
-                formLogin.withObjectPostProcessor(
-                    object : ObjectPostProcessor<UsernamePasswordAuthenticationFilter> {
-                        override fun <O : UsernamePasswordAuthenticationFilter> postProcess(filter: O): O {
-                            filter.setAuthenticationFailureHandler(ExpiredPasswordAuthenticationFailureHandler())
-                            return filter
-                        }
-                    },
-                )
+                formLogin
+                    .loginPage("/login")
+                    .failureHandler(ExpiredPasswordAuthenticationFailureHandler())
             }.oauth2ResourceServer { resourceServer ->
                 resourceServer.jwt {
                     it

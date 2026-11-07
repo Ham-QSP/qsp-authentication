@@ -18,29 +18,28 @@ import fr.f4fez.authorizationserver.password.ExpiredPasswordAuthenticationFailur
 import fr.f4fez.authorizationserver.user.UserService
 import io.swagger.v3.oas.annotations.Hidden
 import jakarta.servlet.http.HttpServletRequest
+import org.springframework.context.MessageSource
+import org.springframework.context.i18n.LocaleContextHolder
 import org.springframework.http.HttpStatus
-import org.springframework.http.MediaType
-import org.springframework.http.ResponseEntity
-import org.springframework.security.web.csrf.CsrfToken
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.server.ResponseStatusException
-import org.springframework.web.util.HtmlUtils
-import java.net.URI
+import org.springframework.web.servlet.ModelAndView
 
 @Hidden
 @Controller
 @RequestMapping("/password-expired")
 class PasswordExpiredController(
     private val userService: UserService,
+    private val messageSource: MessageSource,
 ) {
     @GetMapping
-    fun form(request: HttpServletRequest): ResponseEntity<String> {
+    fun form(request: HttpServletRequest): ModelAndView {
         val username = expiredUsername(request) ?: return redirectToLogin()
-        return html(HttpStatus.OK, formPage(request, username, null))
+        return formView(username, null, HttpStatus.OK)
     }
 
     @PostMapping
@@ -48,22 +47,22 @@ class PasswordExpiredController(
         request: HttpServletRequest,
         @RequestParam newPassword: String,
         @RequestParam confirmPassword: String,
-    ): ResponseEntity<String> {
+    ): ModelAndView {
         val username = expiredUsername(request) ?: return redirectToLogin()
 
         val error = validate(newPassword, confirmPassword)
         if (error != null) {
-            return html(HttpStatus.BAD_REQUEST, formPage(request, username, error))
+            return formView(username, error, HttpStatus.BAD_REQUEST)
         }
 
         try {
             userService.renewExpiredPassword(username, newPassword)
         } catch (e: ResponseStatusException) {
-            return html(HttpStatus.valueOf(e.statusCode.value()), formPage(request, username, e.reason))
+            return formView(username, e.reason, HttpStatus.valueOf(e.statusCode.value()))
         }
 
         request.getSession(false)?.removeAttribute(EXPIRED_PASSWORD_USERNAME)
-        return html(HttpStatus.OK, page("<p>Your password has been changed.</p><a href=\"/login\">Sign in</a>"))
+        return ModelAndView("password-changed", HttpStatus.OK)
     }
 
     private fun expiredUsername(request: HttpServletRequest): String? =
@@ -74,58 +73,22 @@ class PasswordExpiredController(
         confirmPassword: String,
     ): String? =
         when {
-            newPassword.isBlank() -> "The new password is required"
-            newPassword != confirmPassword -> "The passwords do not match"
+            newPassword.isBlank() -> message("password-expired.error.required")
+            newPassword != confirmPassword -> message("password-expired.error.mismatch")
             else -> null
         }
 
-    private fun redirectToLogin(): ResponseEntity<String> =
-        ResponseEntity
-            .status(HttpStatus.FOUND)
-            .location(URI.create("/login"))
-            .build()
+    private fun message(code: String): String = messageSource.getMessage(code, null, LocaleContextHolder.getLocale())
 
-    private fun html(
-        status: HttpStatus,
-        body: String,
-    ): ResponseEntity<String> =
-        ResponseEntity
-            .status(status)
-            .contentType(MediaType.TEXT_HTML)
-            .body(body)
+    private fun redirectToLogin(): ModelAndView = ModelAndView("redirect:/login")
 
-    private fun formPage(
-        request: HttpServletRequest,
+    private fun formView(
         username: String,
         error: String?,
-    ): String {
-        val csrf = request.getAttribute(CsrfToken::class.java.name) as CsrfToken
-        val errorMessage = error?.let { "<p role=\"alert\">${HtmlUtils.htmlEscape(it)}</p>" }.orEmpty()
-        return page(
-            """
-            <h1>Password expired</h1>
-            <p>The password of ${HtmlUtils.htmlEscape(username)} has expired. Choose a new one.</p>
-            $errorMessage
-            <form method="post" action="/password-expired">
-              <p><label>New password <input type="password" name="newPassword" autocomplete="new-password" required autofocus></label></p>
-              <p><label>Confirm password <input type="password" name="confirmPassword" autocomplete="new-password" required></label></p>
-              <input name="${HtmlUtils.htmlEscape(
-                csrf.parameterName,
-            )}" type="hidden" value="${HtmlUtils.htmlEscape(csrf.token)}">
-              <button type="submit">Change password</button>
-            </form>
-            """.trimIndent(),
-        )
-    }
-
-    private fun page(content: String): String =
-        """
-        <!doctype html>
-        <html lang="en">
-        <head><meta charset="utf-8"><title>Password expired</title></head>
-        <body>
-        $content
-        </body>
-        </html>
-        """.trimIndent()
+        status: HttpStatus,
+    ): ModelAndView =
+        ModelAndView("password-expired", status).apply {
+            addObject("username", username)
+            addObject("error", error)
+        }
 }

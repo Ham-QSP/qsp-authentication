@@ -2,6 +2,8 @@ server.port: 9000
 spring:
   application.name: authentication
 
+  messages.fallback-to-system-locale: false
+
   datasource:
     url: jdbc:postgresql://localhost:5432/postgres
     username: postgres

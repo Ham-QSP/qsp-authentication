@@ -160,6 +160,27 @@ class BearerTokenAuthenticationTest {
             .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:3000"))
     }
 
+    @Test
+    fun `admin lists the known roles`() {
+        mockMvc
+            .perform(
+                get("/roles")
+                    .accept(MediaType.APPLICATION_JSON)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer ${token("someone", "ADMIN")}"),
+            ).andExpect(status().isOk)
+            .andExpect(jsonPath("$").value(containsInAnyOrder("ROLE_ADMIN", "ROLE_USER")))
+    }
+
+    @Test
+    fun `non admin cannot list the roles`() {
+        mockMvc
+            .perform(
+                get("/roles")
+                    .accept(MediaType.APPLICATION_JSON)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer ${token("someone", "USER")}"),
+            ).andExpect(status().isForbidden)
+    }
+
     private fun getCurrentUser(token: String) =
         mockMvc.perform(
             get("/users/@me")

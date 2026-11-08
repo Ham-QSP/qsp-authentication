@@ -49,6 +49,6 @@ class ExpiredPasswordAuthenticationFailureHandler : AuthenticationFailureHandler
         val session = request.getSession(true)
         request.changeSessionId()
         session.setAttribute(EXPIRED_PASSWORD_USERNAME, request.getParameter(USERNAME_PARAMETER))
-        redirectStrategy.sendRedirect(request, response, "/password-expired")
+        redirectStrategy.sendRedirect(request, response, "/password")
     }
 }

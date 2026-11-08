@@ -91,6 +91,7 @@ class UserService(
             existing.copy(
                 email = request.email,
                 enabled = request.enabled,
+                emailValidated = request.emailValidated ?: existing.emailValidated,
                 passwordExpiration =
                     when {
                         request.passwordExpiration != null -> request.passwordExpiration.orElse(null)

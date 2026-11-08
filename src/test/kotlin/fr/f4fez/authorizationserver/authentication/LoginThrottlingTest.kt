@@ -17,6 +17,8 @@ package fr.f4fez.authorizationserver.authentication
 import fr.f4fez.authorizationserver.user.ChangePasswordRequest
 import fr.f4fez.authorizationserver.user.CreateUserRequest
 import fr.f4fez.authorizationserver.user.UserService
+import org.hamcrest.Matchers.containsString
+import org.hamcrest.Matchers.not
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
@@ -32,6 +34,7 @@ import org.springframework.test.context.web.WebAppConfiguration
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
 import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
@@ -98,6 +101,19 @@ class LoginThrottlingTest {
         repeat(3) { login("throttle-locked", "wrong") }
 
         login("throttle-locked", "secret").andExpect(redirectedUrl("/login?error"))
+    }
+
+    @Test
+    fun `locked account shows only the generic login error`() {
+        createUser("throttle-message")
+        val session = MockHttpSession()
+        repeat(3) { login("throttle-message", "wrong", session) }
+        login("throttle-message", "secret", session)
+
+        mockMvc
+            .perform(get("/login?error").session(session))
+            .andExpect(content().string(containsString("Invalid credentials")))
+            .andExpect(content().string(not(containsString(ThrottledDaoAuthenticationProvider.LOCKED_MESSAGE))))
     }
 
     @Test

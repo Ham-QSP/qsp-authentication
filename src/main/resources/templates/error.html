@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(#{error.title}, ~{::content})}">
+<body>
+<div th:fragment="content">
+    <p th:text="#{error.status(${status})}">Error 500</p>
+    <th:block th:replace="~{fragments/layout :: alert('error', ${status == 404} ? #{error.404} : #{error.default})}"></th:block>
+    <p><a th:href="@{/login}" th:text="#{login.title}">Sign in</a></p>
+</div>
+</body>
+</html>

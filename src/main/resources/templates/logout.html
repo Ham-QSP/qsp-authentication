@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(#{logout.title}, ~{::content})}">
+<body>
+<div th:fragment="content">
+    <p th:text="#{logout.question}">Are you sure you want to sign out?</p>
+    <form method="post" th:action="@{/logout}" class="auth-form">
+        <button type="submit" th:text="#{logout.submit}">Sign out</button>
+    </form>
+</div>
+</body>
+</html>

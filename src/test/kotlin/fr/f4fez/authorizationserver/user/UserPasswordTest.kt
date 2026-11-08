@@ -172,6 +172,26 @@ class UserPasswordTest {
         assertEquals(EXPIRATION_2030, userService.findById(user.id!!).passwordExpiration)
     }
 
+    @Test
+    fun `update sets emailValidated and keeps it when absent`() {
+        val user = createUser("mail-validated")
+
+        userService.update(
+            user.id!!,
+            UpdateUserRequest(email = user.email, enabled = true, emailValidated = true),
+        )
+        assertTrue(userService.findById(user.id!!).emailValidated)
+
+        userService.update(user.id!!, UpdateUserRequest(email = user.email, enabled = true))
+        assertTrue(userService.findById(user.id!!).emailValidated)
+
+        userService.update(
+            user.id!!,
+            UpdateUserRequest(email = user.email, enabled = true, emailValidated = false),
+        )
+        assertFalse(userService.findById(user.id!!).emailValidated)
+    }
+
     companion object {
         private val EXPIRATION_2030: LocalDateTime = LocalDateTime.of(2030, 1, 2, 3, 4, 5)
 

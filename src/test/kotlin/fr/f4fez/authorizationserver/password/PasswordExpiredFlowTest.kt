@@ -120,12 +120,12 @@ class PasswordExpiredFlowTest {
         newPassword: String,
         confirmPassword: String = newPassword,
     ) = mockMvc.perform(
-        post("/password-expired")
+        post("/password")
             .session(session)
             .contentType(MediaType.APPLICATION_FORM_URLENCODED)
             .param("newPassword", newPassword)
             .param("confirmPassword", confirmPassword)
-            .param("_csrf", csrfToken("/password-expired", session)),
+            .param("_csrf", csrfToken("/password", session)),
     )
 
     private fun storedPasswordMatches(
@@ -138,7 +138,7 @@ class PasswordExpiredFlowTest {
         createUser("flow-redirect")
 
         login("flow-redirect", "old-password", MockHttpSession())
-            .andExpect(redirectedUrl("/password-expired"))
+            .andExpect(redirectedUrl("/password"))
     }
 
     @Test
@@ -154,9 +154,9 @@ class PasswordExpiredFlowTest {
     }
 
     @Test
-    fun `password change page without an expired login redirects to login`() {
+    fun `anonymous password change page redirects to login`() {
         mockMvc
-            .perform(get("/password-expired"))
+            .perform(get("/password").header(HttpHeaders.ACCEPT, MediaType.TEXT_HTML_VALUE))
             .andExpect(redirectedUrl("/login"))
     }
 
@@ -180,7 +180,7 @@ class PasswordExpiredFlowTest {
         submitNewPassword(session, "new-password")
 
         mockMvc
-            .perform(get("/password-expired").session(session))
+            .perform(get("/password").session(session).header(HttpHeaders.ACCEPT, MediaType.TEXT_HTML_VALUE))
             .andExpect(redirectedUrl("/login"))
     }
 
@@ -191,10 +191,22 @@ class PasswordExpiredFlowTest {
         login("flow-layout", "old-password", session)
 
         mockMvc
-            .perform(get("/password-expired").session(session))
+            .perform(get("/password").session(session))
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("class=\"auth-card\"")))
             .andExpect(content().string(containsString("The password of flow-layout has expired")))
+    }
+
+    @Test
+    fun `expired password change does not ask for the current password`() {
+        createUser("flow-no-current")
+        val session = MockHttpSession()
+        login("flow-no-current", "old-password", session)
+
+        mockMvc
+            .perform(get("/password").session(session))
+            .andExpect(content().string(containsString("Password expired")))
+            .andExpect(content().string(not(containsString("name=\"currentPassword\""))))
     }
 
     @Test
@@ -228,7 +240,7 @@ class PasswordExpiredFlowTest {
         login("flow-<script>x</script>", "old-password", session)
 
         mockMvc
-            .perform(get("/password-expired").session(session))
+            .perform(get("/password").session(session))
             .andExpect(content().string(containsString("flow-&lt;script&gt;x&lt;/script&gt;")))
             .andExpect(content().string(not(containsString("<script>x</script>"))))
     }

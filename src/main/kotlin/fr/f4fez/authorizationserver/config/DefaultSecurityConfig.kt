@@ -13,6 +13,7 @@ import fr.f4fez.authorizationserver.authorization.CustomRefreshTokenGenerator
 import fr.f4fez.authorizationserver.authorization.PublicClientRefreshTokenAuthenticationConverter
 import fr.f4fez.authorizationserver.authorization.PublicClientRefreshTokenAuthenticationProvider
 import fr.f4fez.authorizationserver.password.ExpiredPasswordAuthenticationFailureHandler
+import fr.f4fez.authorizationserver.password.PasswordChangeAuthorizationManager
 import fr.f4fez.authorizationserver.user.UserService
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
@@ -137,7 +138,6 @@ class DefaultSecurityConfig {
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html",
-                        "/password-expired",
                         "/css/**",
                         "/login",
                         "/error",
@@ -150,6 +150,8 @@ class DefaultSecurityConfig {
                     .authenticated()
                     .requestMatchers("/oauth2/consent")
                     .authenticated()
+                    .requestMatchers("/password")
+                    .access(PasswordChangeAuthorizationManager())
                     .anyRequest()
                     .hasRole("ADMIN")
             }.formLogin { formLogin ->

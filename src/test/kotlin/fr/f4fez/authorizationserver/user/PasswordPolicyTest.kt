@@ -60,7 +60,7 @@ class PasswordPolicyTest {
 
     @Test
     fun `a missing uppercase is rejected`() {
-        assertRejected(policy(), "correct-horse-7", "uppercase")
+        assertRejected(policy(), "correct_horse_7", "uppercase")
     }
 
     @Test

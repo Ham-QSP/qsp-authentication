@@ -72,7 +72,7 @@ class UserPasswordPolicyTest {
         assertBadRequest {
             userService.create(
                 CreateUserRequest(
-                    username = "policy-create",
+                    username = "policy_create",
                     password = weakPassword,
                     email = "policy-create@localhost",
                 ),
@@ -95,7 +95,7 @@ class UserPasswordPolicyTest {
 
     @Test
     fun `update rejects a weak password and keeps the old one`() {
-        val user = createUser("policy-update")
+        val user = createUser("policy_update")
 
         assertBadRequest {
             userService.update(
@@ -104,45 +104,45 @@ class UserPasswordPolicyTest {
             )
         }
 
-        assertPasswordIs("policy-update", strongPassword)
+        assertPasswordIs("policy_update", strongPassword)
     }
 
     @Test
     fun `update without a password does not apply the policy`() {
-        val user = createUser("policy-nopwd")
+        val user = createUser("policy_nopwd")
 
         userService.update(user.id!!, UpdateUserRequest(email = user.email, enabled = false))
 
-        assertPasswordIs("policy-nopwd", strongPassword)
+        assertPasswordIs("policy_nopwd", strongPassword)
     }
 
     @Test
     fun `changePassword rejects a weak password and keeps the old one`() {
-        createUser("policy-change")
+        createUser("policy_change")
 
         assertBadRequest {
-            userService.changePassword("policy-change", ChangePasswordRequest(strongPassword, weakPassword))
+            userService.changePassword("policy_change", ChangePasswordRequest(strongPassword, weakPassword))
         }
 
-        assertPasswordIs("policy-change", strongPassword)
+        assertPasswordIs("policy_change", strongPassword)
     }
 
     @Test
     fun `changePassword accepts a strong password`() {
-        createUser("policy-change-ok")
+        createUser("policy_change_ok")
 
-        userService.changePassword("policy-change-ok", ChangePasswordRequest(strongPassword, otherStrongPassword))
+        userService.changePassword("policy_change_ok", ChangePasswordRequest(strongPassword, otherStrongPassword))
 
-        assertPasswordIs("policy-change-ok", otherStrongPassword)
+        assertPasswordIs("policy_change_ok", otherStrongPassword)
     }
 
     @Test
     fun `renewExpiredPassword rejects a weak password and keeps the old one`() {
-        createUser("policy-renew")
+        createUser("policy_renew")
 
-        assertBadRequest { userService.renewExpiredPassword("policy-renew", weakPassword) }
+        assertBadRequest { userService.renewExpiredPassword("policy_renew", weakPassword) }
 
-        assertPasswordIs("policy-renew", strongPassword)
+        assertPasswordIs("policy_renew", strongPassword)
     }
 
     companion object {

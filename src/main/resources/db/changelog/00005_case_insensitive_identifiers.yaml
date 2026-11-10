@@ -1,0 +1,28 @@
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>
+
+# Usernames are compared in uppercase and emails in lowercase: forbid rows that differ only by case.
+databaseChangeLog:
+- changeSet:
+    id:  7
+    author:  "Florian MAZEN"
+    changes:
+      - sql:
+          sql: create unique index ux_auth_users_username_upper on qsp_auth_users (upper(username))
+      - sql:
+          sql: create unique index ux_auth_users_email_lower on qsp_auth_users (lower(email))
+    rollback:
+      - sql:
+          sql: drop index ux_auth_users_email_lower
+      - sql:
+          sql: drop index ux_auth_users_username_upper

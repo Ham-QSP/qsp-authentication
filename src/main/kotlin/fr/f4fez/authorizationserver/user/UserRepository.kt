@@ -18,14 +18,20 @@ import org.springframework.data.jdbc.repository.query.Query
 import org.springframework.data.repository.CrudRepository
 import java.util.UUID
 
+/**
+ * Lookups take identifiers already normalized by [Usernames] and [Emails]; only the stored side is folded,
+ * so that a row written in another case is still found.
+ */
 interface UserRepository : CrudRepository<User, UUID> {
-    fun findByUsername(username: String): User?
+    @Query("select * from qsp_auth_users where upper(username) = :username")
+    fun findByNormalizedUsername(username: String): User?
 
-    fun existsByUsername(username: String): Boolean
+    @Query("select count(*) > 0 from qsp_auth_users where upper(username) = :username")
+    fun existsByNormalizedUsername(username: String): Boolean
 
-    fun existsByEmail(email: String): Boolean
+    @Query("select count(*) > 0 from qsp_auth_users where lower(email) = :email")
+    fun existsByNormalizedEmail(email: String): Boolean
 
-    // Exact match only: the email uniqueness constraint is case sensitive, so several users may match
-    @Query("select * from qsp_auth_users where lower(email) = lower(:email)")
-    fun findAllByEmailIgnoreCase(email: String): List<User>
+    @Query("select * from qsp_auth_users where lower(email) = :email")
+    fun findAllByNormalizedEmail(email: String): List<User>
 }

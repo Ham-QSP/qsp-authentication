@@ -14,9 +14,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>
  */
 package fr.f4fez.authorizationserver.authentication
 
+import fr.f4fez.authorizationserver.user.Usernames
 import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.security.authentication.CredentialsExpiredException
 import org.springframework.security.authentication.LockedException
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.userdetails.UserDetailsService
@@ -25,6 +27,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 /**
  * Password authentication that refuses a username locked by [LoginAttemptLimiter], before looking it up,
  * so that locked and unknown usernames get the same answer.
+ * The username is normalized first, so that case variants share one account and one failure count.
  */
 class ThrottledDaoAuthenticationProvider(
     userDetailsService: UserDetailsService,
@@ -40,12 +43,16 @@ class ThrottledDaoAuthenticationProvider(
     }
 
     override fun authenticate(authentication: Authentication): Authentication {
-        val username = authentication.name
+        val username = Usernames.normalize(authentication.name)
         if (loginAttemptLimiter.isLocked(username)) {
             throw LockedException(LOCKED_MESSAGE)
         }
+        val normalized =
+            UsernamePasswordAuthenticationToken
+                .unauthenticated(username, authentication.credentials)
+                .apply { details = authentication.details }
         try {
-            return super.authenticate(authentication).also { loginAttemptLimiter.recordSuccess(username) }
+            return super.authenticate(normalized).also { loginAttemptLimiter.recordSuccess(username) }
         } catch (e: BadCredentialsException) {
             loginAttemptLimiter.recordFailure(username)
             throw e

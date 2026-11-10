@@ -49,25 +49,25 @@ class UserRolesTest {
 
     @Test
     fun `findById returns the roles of the user`() {
-        val user = createUser("roles-get")
+        val user = createUser("roles_get")
 
         assertEquals(setOf("ROLE_USER"), userService.findById(user.id!!).roles)
     }
 
     @Test
     fun `findAll returns the roles of each user`() {
-        createUser("roles-list")
+        createUser("roles_list")
 
-        val listed = userService.findAll().first { it.username == "roles-list" }
+        val listed = userService.findAll().first { it.username == "ROLES_LIST" }
 
         assertEquals(setOf("ROLE_USER"), listed.roles)
     }
 
     @Test
     fun `update replaces the roles of the user`() {
-        val user = createUser("roles-replace")
+        val user = createUser("roles_replace")
 
-        val updated = userService.update(user.id!!, updateRequest("roles-replace", setOf("ROLE_ADMIN")))
+        val updated = userService.update(user.id!!, updateRequest("roles_replace", setOf("ROLE_ADMIN")))
 
         assertEquals(setOf("ROLE_ADMIN"), updated.roles)
         assertEquals(setOf("ROLE_ADMIN"), userService.findById(user.id!!).roles)
@@ -75,20 +75,20 @@ class UserRolesTest {
 
     @Test
     fun `update without roles keeps the existing roles`() {
-        val user = createUser("roles-keep")
+        val user = createUser("roles_keep")
 
-        val updated = userService.update(user.id!!, updateRequest("roles-keep", null))
+        val updated = userService.update(user.id!!, updateRequest("roles_keep", null))
 
         assertEquals(setOf("ROLE_USER"), updated.roles)
     }
 
     @Test
     fun `update with an unknown role is rejected and changes nothing`() {
-        val user = createUser("roles-unknown")
+        val user = createUser("roles_unknown")
 
         val exception =
             assertFailsWith<ResponseStatusException> {
-                userService.update(user.id!!, updateRequest("roles-unknown", setOf("ROLE_DOES_NOT_EXIST")))
+                userService.update(user.id!!, updateRequest("roles_unknown", setOf("ROLE_DOES_NOT_EXIST")))
             }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)

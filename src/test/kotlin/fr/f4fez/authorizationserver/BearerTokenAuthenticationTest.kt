@@ -117,7 +117,7 @@ class BearerTokenAuthenticationTest {
     fun `admin update without passwordExpiration keeps it`() {
         val user =
             userService.create(
-                CreateUserRequest(username = "json-keep", password = "secret", email = "json-keep@localhost"),
+                CreateUserRequest(username = "json_keep", password = "secret", email = "json-keep@localhost"),
             )
         adminUpdate(
             user.id!!,
@@ -133,7 +133,7 @@ class BearerTokenAuthenticationTest {
     fun `admin update with a null passwordExpiration clears it`() {
         val user =
             userService.create(
-                CreateUserRequest(username = "json-clear", password = "secret", email = "json-clear@localhost"),
+                CreateUserRequest(username = "json_clear", password = "secret", email = "json-clear@localhost"),
             )
         adminUpdate(
             user.id!!,
@@ -191,30 +191,30 @@ class BearerTokenAuthenticationTest {
     @Test
     fun `access token issued to a client allowed on the user api is accepted`() {
         userService.create(
-            CreateUserRequest(username = "aud-portal", password = "secret", email = "aud-portal@localhost"),
+            CreateUserRequest(username = "aud_portal", password = "secret", email = "aud-portal@localhost"),
         )
 
-        getCurrentUser(signedToken("aud-portal", setOf("USER"), audience = "portal", scope = setOf("openid")))
+        getCurrentUser(signedToken("aud_portal", setOf("USER"), audience = "portal", scope = setOf("openid")))
             .andExpect(status().isOk)
     }
 
     @Test
     fun `token without scope, such as an ID token, is rejected`() {
         userService.create(
-            CreateUserRequest(username = "aud-id-token", password = "secret", email = "aud-id-token@localhost"),
+            CreateUserRequest(username = "aud_id_token", password = "secret", email = "aud-id-token@localhost"),
         )
 
-        getCurrentUser(signedToken("aud-id-token", setOf("USER"), audience = "portal", scope = null))
+        getCurrentUser(signedToken("aud_id_token", setOf("USER"), audience = "portal", scope = null))
             .andExpect(status().isUnauthorized)
     }
 
     @Test
     fun `token issued to a client not allowed on the user api is rejected`() {
         userService.create(
-            CreateUserRequest(username = "aud-other", password = "secret", email = "aud-other@localhost"),
+            CreateUserRequest(username = "aud_other", password = "secret", email = "aud-other@localhost"),
         )
 
-        getCurrentUser(signedToken("aud-other", setOf("ADMIN"), audience = "other", scope = setOf("openid")))
+        getCurrentUser(signedToken("aud_other", setOf("ADMIN"), audience = "other", scope = setOf("openid")))
             .andExpect(status().isUnauthorized)
     }
 
@@ -251,18 +251,18 @@ class BearerTokenAuthenticationTest {
     @Test
     fun `non admin can change own password through users me password`() {
         userService.create(
-            CreateUserRequest(username = "pwd-self", password = "old-password", email = "pwd-self@localhost"),
+            CreateUserRequest(username = "pwd_self", password = "old_password", email = "pwd-self@localhost"),
         )
 
         mockMvc
             .perform(
                 put("/users/@me/password")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("""{"currentPassword":"old-password","newPassword":"new-password"}""")
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer ${token("pwd-self", "USER")}"),
+                    .content("""{"currentPassword":"old_password","newPassword":"new_password"}""")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer ${token("pwd_self", "USER")}"),
             ).andExpect(status().isNoContent)
 
-        assertTrue(passwordEncoder.matches("new-password", userService.findByUsername("pwd-self").password))
+        assertTrue(passwordEncoder.matches("new_password", userService.findByUsername("pwd_self").password))
     }
 
     @Test
@@ -288,28 +288,28 @@ class BearerTokenAuthenticationTest {
 
     private fun createSearchableUser(username: String) {
         userService.create(
-            CreateUserRequest(username = username, password = "old-password", email = "$username@localhost"),
+            CreateUserRequest(username = username, password = "old_password", email = "$username@localhost"),
         )
     }
 
     @Test
     fun `user role can search by email and only gets id and username`() {
-        createSearchableUser("search-user-role")
+        createSearchableUser("search_user_role")
 
-        searchByEmail("SEARCH-USER-ROLE@localhost", token("someone", "USER"))
+        searchByEmail("SEARCH_USER_ROLE@localhost", token("someone", "USER"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
-            .andExpect(jsonPath("$[0].username").value("search-user-role"))
+            .andExpect(jsonPath("$[0].username").value("SEARCH_USER_ROLE"))
             .andExpect(jsonPath("$[0].keys()").value(containsInAnyOrder("id", "username")))
     }
 
     @Test
     fun `admin role can search by email`() {
-        createSearchableUser("search-admin-role")
+        createSearchableUser("search_admin_role")
 
-        searchByEmail("search-admin-role@localhost", token("someone", "ADMIN"))
+        searchByEmail("search_admin_role@localhost", token("someone", "ADMIN"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$[0].username").value("search-admin-role"))
+            .andExpect(jsonPath("$[0].username").value("SEARCH_ADMIN_ROLE"))
     }
 
     @Test

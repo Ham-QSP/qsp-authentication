@@ -77,7 +77,7 @@ class PasswordExpiredFlowTest {
     ) {
         val user =
             userService.create(
-                CreateUserRequest(username = username, password = "old-password", email = "$username@localhost"),
+                CreateUserRequest(username = username, password = "old_password", email = "$username@localhost"),
             )
         userService.update(
             user.id!!,
@@ -135,18 +135,18 @@ class PasswordExpiredFlowTest {
 
     @Test
     fun `login with an expired password redirects to the password change page`() {
-        createUser("flow-redirect")
+        createUser("flow_redirect")
 
-        login("flow-redirect", "old-password", MockHttpSession())
+        login("flow_redirect", "old_password", MockHttpSession())
             .andExpect(redirectedUrl("/password"))
     }
 
     @Test
     fun `login with a wrong password still shows the login error`() {
-        createUser("flow-wrong")
+        createUser("flow_wrong")
         val session = MockHttpSession()
 
-        login("flow-wrong", "not-the-password", session).andExpect(redirectedUrl("/login?error"))
+        login("flow_wrong", "not_the_password", session).andExpect(redirectedUrl("/login?error"))
 
         mockMvc
             .perform(get("/login?error").session(session))
@@ -162,22 +162,22 @@ class PasswordExpiredFlowTest {
 
     @Test
     fun `new password replaces the expired one and clears the expiration`() {
-        createUser("flow-change")
+        createUser("flow_change")
         val session = MockHttpSession()
-        login("flow-change", "old-password", session)
+        login("flow_change", "old_password", session)
 
-        submitNewPassword(session, "new-password").andExpect(status().isOk)
+        submitNewPassword(session, "new_password").andExpect(status().isOk)
 
-        assertTrue(storedPasswordMatches("flow-change", "new-password"))
-        assertNull(userService.findByUsername("flow-change").passwordExpiration)
+        assertTrue(storedPasswordMatches("flow_change", "new_password"))
+        assertNull(userService.findByUsername("flow_change").passwordExpiration)
     }
 
     @Test
     fun `password change cannot be replayed after success`() {
-        createUser("flow-replay")
+        createUser("flow_replay")
         val session = MockHttpSession()
-        login("flow-replay", "old-password", session)
-        submitNewPassword(session, "new-password")
+        login("flow_replay", "old_password", session)
+        submitNewPassword(session, "new_password")
 
         mockMvc
             .perform(get("/password").session(session).header(HttpHeaders.ACCEPT, MediaType.TEXT_HTML_VALUE))
@@ -186,22 +186,22 @@ class PasswordExpiredFlowTest {
 
     @Test
     fun `password change page is rendered from the shared layout`() {
-        createUser("flow-layout")
+        createUser("flow_layout")
         val session = MockHttpSession()
-        login("flow-layout", "old-password", session)
+        login("flow_layout", "old_password", session)
 
         mockMvc
             .perform(get("/password").session(session))
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("class=\"auth-card\"")))
-            .andExpect(content().string(containsString("The password of flow-layout has expired")))
+            .andExpect(content().string(containsString("The password of FLOW_LAYOUT has expired")))
     }
 
     @Test
     fun `expired password change does not ask for the current password`() {
-        createUser("flow-no-current")
+        createUser("flow_no_current")
         val session = MockHttpSession()
-        login("flow-no-current", "old-password", session)
+        login("flow_no_current", "old_password", session)
 
         mockMvc
             .perform(get("/password").session(session))
@@ -211,11 +211,11 @@ class PasswordExpiredFlowTest {
 
     @Test
     fun `mismatching passwords show the error in the shared layout`() {
-        createUser("flow-mismatch-page")
+        createUser("flow_mismatch_page")
         val session = MockHttpSession()
-        login("flow-mismatch-page", "old-password", session)
+        login("flow_mismatch_page", "old_password", session)
 
-        submitNewPassword(session, "new-password", "other-password")
+        submitNewPassword(session, "new_password", "other_password")
             .andExpect(status().isBadRequest)
             .andExpect(content().string(containsString("auth-alert--error")))
             .andExpect(content().string(containsString("The passwords do not match")))
@@ -223,38 +223,26 @@ class PasswordExpiredFlowTest {
 
     @Test
     fun `success page links back to login`() {
-        createUser("flow-success-page")
+        createUser("flow_success_page")
         val session = MockHttpSession()
-        login("flow-success-page", "old-password", session)
+        login("flow_success_page", "old_password", session)
 
-        submitNewPassword(session, "new-password")
+        submitNewPassword(session, "new_password")
             .andExpect(content().string(containsString("Your password has been changed.")))
             .andExpect(content().string(containsString("href=\"/login\"")))
             .andExpect(content().string(containsString("class=\"auth-card\"")))
     }
 
     @Test
-    fun `username is escaped on the password change page`() {
-        createUser("flow-<script>x</script>")
-        val session = MockHttpSession()
-        login("flow-<script>x</script>", "old-password", session)
-
-        mockMvc
-            .perform(get("/password").session(session))
-            .andExpect(content().string(containsString("flow-&lt;script&gt;x&lt;/script&gt;")))
-            .andExpect(content().string(not(containsString("<script>x</script>"))))
-    }
-
-    @Test
     fun `saved request resumes after logging in with the new password`() {
-        createUser("flow-resume")
+        createUser("flow_resume")
         val session = MockHttpSession()
         mockMvc.perform(get("/users").session(session).header(HttpHeaders.ACCEPT, MediaType.TEXT_HTML_VALUE))
-        login("flow-resume", "old-password", session)
-        submitNewPassword(session, "new-password")
+        login("flow_resume", "old_password", session)
+        submitNewPassword(session, "new_password")
 
         val redirect =
-            login("flow-resume", "new-password", session)
+            login("flow_resume", "new_password", session)
                 .andReturn()
                 .response.redirectedUrl
 
@@ -263,35 +251,35 @@ class PasswordExpiredFlowTest {
 
     @Test
     fun `mismatching confirmation keeps the old password`() {
-        createUser("flow-mismatch")
+        createUser("flow_mismatch")
         val session = MockHttpSession()
-        login("flow-mismatch", "old-password", session)
+        login("flow_mismatch", "old_password", session)
 
-        submitNewPassword(session, "new-password", "other-password").andExpect(status().isBadRequest)
+        submitNewPassword(session, "new_password", "other_password").andExpect(status().isBadRequest)
 
-        assertTrue(storedPasswordMatches("flow-mismatch", "old-password"))
+        assertTrue(storedPasswordMatches("flow_mismatch", "old_password"))
     }
 
     @Test
     fun `reusing the expired password is rejected`() {
-        createUser("flow-reuse")
+        createUser("flow_reuse")
         val session = MockHttpSession()
-        login("flow-reuse", "old-password", session)
+        login("flow_reuse", "old_password", session)
 
-        submitNewPassword(session, "old-password").andExpect(status().isBadRequest)
+        submitNewPassword(session, "old_password").andExpect(status().isBadRequest)
 
-        assertNotNull(userService.findByUsername("flow-reuse").passwordExpiration)
+        assertNotNull(userService.findByUsername("flow_reuse").passwordExpiration)
     }
 
     @Test
     fun `new password longer than the bcrypt limit is rejected`() {
-        createUser("flow-long")
+        createUser("flow_long")
         val session = MockHttpSession()
-        login("flow-long", "old-password", session)
+        login("flow_long", "old_password", session)
 
         submitNewPassword(session, "x".repeat(73)).andExpect(status().isBadRequest)
 
-        assertFalse(storedPasswordMatches("flow-long", "x".repeat(73)))
+        assertFalse(storedPasswordMatches("flow_long", "x".repeat(73)))
     }
 
     companion object {

@@ -72,7 +72,7 @@ class PasswordChangeFlowTest {
 
     private fun createUser(username: String) {
         userService.create(
-            CreateUserRequest(username = username, password = "old-password", email = "$username@localhost"),
+            CreateUserRequest(username = username, password = "old_password", email = "$username@localhost"),
         )
     }
 
@@ -97,7 +97,7 @@ class PasswordChangeFlowTest {
             .session(session)
             .contentType(MediaType.APPLICATION_FORM_URLENCODED)
             .param("username", username)
-            .param("password", "old-password")
+            .param("password", "old_password")
             .param("_csrf", csrfToken("/login", session)),
     )
 
@@ -130,7 +130,7 @@ class PasswordChangeFlowTest {
 
     @Test
     fun `signed-in user sees the change form with the current password field`() {
-        val session = loggedInSession("change-form")
+        val session = loggedInSession("change_form")
 
         mockMvc
             .perform(get("/password").session(session))
@@ -143,14 +143,14 @@ class PasswordChangeFlowTest {
 
     @Test
     fun `anonymous user signs in first and comes back to the change form`() {
-        createUser("change-resume")
+        createUser("change_resume")
         val session = MockHttpSession()
         mockMvc
             .perform(get("/password").session(session).header(HttpHeaders.ACCEPT, MediaType.TEXT_HTML_VALUE))
             .andExpect(redirectedUrl("/login"))
 
         val redirect =
-            login("change-resume", session)
+            login("change_resume", session)
                 .andReturn()
                 .response.redirectedUrl
 
@@ -159,48 +159,48 @@ class PasswordChangeFlowTest {
 
     @Test
     fun `correct current password changes the password and shows a confirmation`() {
-        val session = loggedInSession("change-ok")
+        val session = loggedInSession("change_ok")
 
-        submitChange(session, "old-password", "new-password")
+        submitChange(session, "old_password", "new_password")
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("Your password has been changed.")))
             .andExpect(content().string(not(containsString("href=\"/login\""))))
 
-        assertTrue(storedPasswordMatches("change-ok", "new-password"))
+        assertTrue(storedPasswordMatches("change_ok", "new_password"))
     }
 
     @Test
     fun `wrong current password is rejected and keeps the old password`() {
-        val session = loggedInSession("change-wrong")
+        val session = loggedInSession("change_wrong")
 
-        submitChange(session, "not-the-password", "new-password")
+        submitChange(session, "not_the_password", "new_password")
             .andExpect(status().isBadRequest)
             .andExpect(content().string(containsString("auth-alert--error")))
             .andExpect(content().string(containsString("Current password is incorrect")))
 
-        assertTrue(storedPasswordMatches("change-wrong", "old-password"))
+        assertTrue(storedPasswordMatches("change_wrong", "old_password"))
     }
 
     @Test
     fun `mismatching confirmation is rejected and keeps the old password`() {
-        val session = loggedInSession("change-mismatch")
+        val session = loggedInSession("change_mismatch")
 
-        submitChange(session, "old-password", "new-password", "other-password")
+        submitChange(session, "old_password", "new_password", "other_password")
             .andExpect(status().isBadRequest)
             .andExpect(content().string(containsString("The passwords do not match")))
 
-        assertFalse(storedPasswordMatches("change-mismatch", "new-password"))
+        assertFalse(storedPasswordMatches("change_mismatch", "new_password"))
     }
 
     @Test
     fun `missing current password is rejected`() {
-        val session = loggedInSession("change-no-current")
+        val session = loggedInSession("change_no_current")
 
-        submitChange(session, "", "new-password")
+        submitChange(session, "", "new_password")
             .andExpect(status().isBadRequest)
             .andExpect(content().string(containsString("The current password is required")))
 
-        assertTrue(storedPasswordMatches("change-no-current", "old-password"))
+        assertTrue(storedPasswordMatches("change_no_current", "old_password"))
     }
 
     companion object {

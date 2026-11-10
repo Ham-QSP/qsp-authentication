@@ -43,31 +43,40 @@ class UserService(
             .findById(id)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "User '$id' not found") }
 
-    fun findByEmail(email: String): List<User> = userRepository.findAllByEmailIgnoreCase(email.trim())
+    fun findByEmail(email: String): List<User> = userRepository.findAllByNormalizedEmail(Emails.normalize(email))
 
-    fun findByUsernameOrNull(username: String): User? = userRepository.findByUsername(username)
+    fun findByUsernameOrNull(username: String): User? =
+        userRepository.findByNormalizedUsername(Usernames.normalize(username))
 
     fun findByUsername(username: String): User =
-        userRepository.findByUsername(username)
+        findByUsernameOrNull(username)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User '$username' not found")
 
     @Transactional
     fun create(request: CreateUserRequest): User {
-        if (userRepository.existsByUsername(request.username)) {
-            throw ResponseStatusException(HttpStatus.CONFLICT, "Username '${request.username}' is already taken")
+        val username = Usernames.normalize(request.username)
+        val email = Emails.normalize(request.email)
+        if (!Usernames.isValid(username)) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Username may only contain letters A-Z, digits and '_'",
+            )
         }
-        if (userRepository.existsByEmail(request.email)) {
-            throw ResponseStatusException(HttpStatus.CONFLICT, "Email '${request.email}' is already used")
+        if (userRepository.existsByNormalizedUsername(username)) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Username '$username' is already taken")
+        }
+        if (userRepository.existsByNormalizedEmail(email)) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Email '$email' is already used")
         }
 
-        passwordPolicy.requireValid(request.username, request.password)
+        passwordPolicy.requireValid(username, request.password)
 
         val user =
             User(
-                username = request.username,
+                username = username,
                 password = passwordEncoder.encode(request.password)!!,
                 enabled = request.enabled,
-                email = request.email,
+                email = email,
                 emailValidated = false,
                 authorities = setOf(UserAuthority(DEFAULT_AUTHORITY)),
             )
@@ -80,8 +89,9 @@ class UserService(
         request: UpdateUserRequest,
     ): User {
         val existing = findById(id)
-        if (existing.email != request.email && userRepository.existsByEmail(request.email)) {
-            throw ResponseStatusException(HttpStatus.CONFLICT, "Email '${request.email}' is already used")
+        val email = Emails.normalize(request.email)
+        if (Emails.normalize(existing.email) != email && userRepository.existsByNormalizedEmail(email)) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Email '$email' is already used")
         }
 
         request.roles?.let(::requireKnownRoles)
@@ -89,7 +99,7 @@ class UserService(
 
         val updated =
             existing.copy(
-                email = request.email,
+                email = email,
                 enabled = request.enabled,
                 emailValidated = request.emailValidated ?: existing.emailValidated,
                 passwordExpiration =
@@ -112,20 +122,20 @@ class UserService(
         username: String,
         request: ChangePasswordRequest,
     ) {
-        val user =
-            userRepository.findByUsername(username)
-                ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User '$username' not found")
-        if (loginAttemptLimiter.isLocked(username)) {
+        val user = findByUsername(username)
+        // Same key as the login throttling, so case variants share one failure count
+        val throttlingKey = Usernames.normalize(username)
+        if (loginAttemptLimiter.isLocked(throttlingKey)) {
             throw ResponseStatusException(
                 HttpStatus.TOO_MANY_REQUESTS,
                 ThrottledDaoAuthenticationProvider.LOCKED_MESSAGE,
             )
         }
         if (!passwordEncoder.matches(request.currentPassword, user.password)) {
-            loginAttemptLimiter.recordFailure(username)
+            loginAttemptLimiter.recordFailure(throttlingKey)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect")
         }
-        loginAttemptLimiter.recordSuccess(username)
+        loginAttemptLimiter.recordSuccess(throttlingKey)
         passwordPolicy.requireValid(user.username, request.newPassword)
         storePassword(user, request.newPassword)
     }

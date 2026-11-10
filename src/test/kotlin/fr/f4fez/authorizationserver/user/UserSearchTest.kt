@@ -41,28 +41,28 @@ class UserSearchTest {
 
     @Test
     fun `findByEmail finds the exact email`() {
-        createUser("search-exact", "Search.Exact@Example.com")
+        createUser("search_exact", "Search.Exact@Example.com")
 
-        assertEquals(listOf("search-exact"), usernamesFor("Search.Exact@Example.com"))
+        assertEquals(listOf("SEARCH_EXACT"), usernamesFor("Search.Exact@Example.com"))
     }
 
     @Test
     fun `findByEmail ignores the case`() {
-        createUser("search-case", "Search.Case@Example.com")
+        createUser("search_case", "Search.Case@Example.com")
 
-        assertEquals(listOf("search-case"), usernamesFor("search.case@EXAMPLE.COM"))
+        assertEquals(listOf("SEARCH_CASE"), usernamesFor("search.case@EXAMPLE.COM"))
     }
 
     @Test
     fun `findByEmail ignores surrounding whitespace`() {
-        createUser("search-trim", "search.trim@example.com")
+        createUser("search_trim", "search.trim@example.com")
 
-        assertEquals(listOf("search-trim"), usernamesFor("  search.trim@example.com "))
+        assertEquals(listOf("SEARCH_TRIM"), usernamesFor("  search.trim@example.com "))
     }
 
     @Test
     fun `findByEmail does not match partially`() {
-        createUser("search-partial", "search.partial@example.com")
+        createUser("search_partial", "search.partial@example.com")
 
         assertTrue(usernamesFor("search.partial@example").isEmpty())
         assertTrue(usernamesFor("earch.partial@example.com").isEmpty())
@@ -72,7 +72,7 @@ class UserSearchTest {
 
     @Test
     fun `findByEmail treats sql wildcards literally`() {
-        createUser("search-wildcard", "search.wildcard@example.com")
+        createUser("search_wildcard", "search.wildcard@example.com")
 
         assertTrue(usernamesFor("%@example.com").isEmpty())
         assertTrue(usernamesFor("search_wildcard@example.com").isEmpty())

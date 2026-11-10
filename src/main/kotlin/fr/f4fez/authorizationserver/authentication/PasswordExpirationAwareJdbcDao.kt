@@ -15,6 +15,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>
 
 package fr.f4fez.authorizationserver.authentication
 
+import fr.f4fez.authorizationserver.user.Usernames
 import org.springframework.security.core.authority.AuthorityUtils
 import org.springframework.security.core.userdetails.User
 import org.springframework.security.core.userdetails.UserDetails
@@ -23,7 +24,8 @@ import java.time.LocalDateTime
 
 /**
  * Loads users with their password expiration, so that an expired password is rejected at login.
- * The users query must return username, password, enabled and password_expiration, in that order.
+ * The users query must return username, password, enabled and password_expiration, in that order,
+ * and receives the username normalized by [Usernames].
  */
 class PasswordExpirationAwareJdbcDao : JdbcDaoImpl() {
     override fun loadUsersByUsername(username: String): List<UserDetails> =
@@ -41,6 +43,6 @@ class PasswordExpirationAwareJdbcDao : JdbcDaoImpl() {
                     AuthorityUtils.NO_AUTHORITIES,
                 )
             },
-            username,
+            Usernames.normalize(username),
         )
 }

@@ -37,7 +37,7 @@ class UserCreationTest {
     fun `create grants ROLE_USER by default`() {
         userService.create(
             CreateUserRequest(
-                username = "new-user",
+                username = "new_user",
                 password = "secret",
                 email = "new-user@localhost",
                 enabled = true,
@@ -49,16 +49,16 @@ class UserCreationTest {
                 "select a.authority from qsp_auth_user_authorities a join qsp_auth_users u on u.id = a.user_id " +
                     "where u.username = ?",
                 String::class.java,
-                "new-user",
+                "NEW_USER",
             )
         assertEquals(listOf("ROLE_USER"), authorities)
     }
 
     @Test
     fun `findByEmail returns the roles`() {
-        createUser("email-roles")
+        createUser("email_roles")
 
-        assertEquals(setOf("ROLE_USER"), userService.findByEmail("email-roles@localhost").single().roles)
+        assertEquals(setOf("ROLE_USER"), userService.findByEmail("email_roles@localhost").single().roles)
     }
 
     private fun createUser(username: String) =

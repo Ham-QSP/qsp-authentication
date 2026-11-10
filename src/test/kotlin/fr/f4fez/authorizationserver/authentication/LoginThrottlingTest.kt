@@ -97,18 +97,18 @@ class LoginThrottlingTest {
 
     @Test
     fun `correct password is rejected once too many logins failed`() {
-        createUser("throttle-locked")
-        repeat(3) { login("throttle-locked", "wrong") }
+        createUser("throttle_locked")
+        repeat(3) { login("throttle_locked", "wrong") }
 
-        login("throttle-locked", "secret").andExpect(redirectedUrl("/login?error"))
+        login("throttle_locked", "secret").andExpect(redirectedUrl("/login?error"))
     }
 
     @Test
     fun `locked account shows only the generic login error`() {
-        createUser("throttle-message")
+        createUser("throttle_message")
         val session = MockHttpSession()
-        repeat(3) { login("throttle-message", "wrong", session) }
-        login("throttle-message", "secret", session)
+        repeat(3) { login("throttle_message", "wrong", session) }
+        login("throttle_message", "secret", session)
 
         mockMvc
             .perform(get("/login?error").session(session))
@@ -118,34 +118,42 @@ class LoginThrottlingTest {
 
     @Test
     fun `unknown username is locked the same way, so the lock does not reveal accounts`() {
-        repeat(3) { login("throttle-nobody", "wrong") }
+        repeat(3) { login("throttle_nobody", "wrong") }
 
-        assertTrue(loginAttemptLimiter.isLocked("throttle-nobody"))
+        assertTrue(loginAttemptLimiter.isLocked("THROTTLE_NOBODY"))
+    }
+
+    @Test
+    fun `case variants of a username share one failure count`() {
+        createUser("throttle_case")
+        listOf("throttle_case", "THROTTLE_CASE", " Throttle_Case ").forEach { login(it, "wrong") }
+
+        login("throttle_case", "secret").andExpect(redirectedUrl("/login?error"))
     }
 
     @Test
     fun `successful login resets the failure count`() {
-        createUser("throttle-reset")
-        repeat(2) { login("throttle-reset", "wrong") }
-        login("throttle-reset", "secret").andExpect(redirectedUrl("/"))
+        createUser("throttle_reset")
+        repeat(2) { login("throttle_reset", "wrong") }
+        login("throttle_reset", "secret").andExpect(redirectedUrl("/"))
 
-        repeat(2) { login("throttle-reset", "wrong") }
+        repeat(2) { login("throttle_reset", "wrong") }
 
-        login("throttle-reset", "secret").andExpect(redirectedUrl("/"))
+        login("throttle_reset", "secret").andExpect(redirectedUrl("/"))
     }
 
     @Test
     fun `password change is refused once too many current passwords were wrong`() {
-        createUser("throttle-change")
+        createUser("throttle_change")
         repeat(3) {
             assertFailsWith<ResponseStatusException> {
-                userService.changePassword("throttle-change", ChangePasswordRequest("wrong", "new-password"))
+                userService.changePassword("throttle_change", ChangePasswordRequest("wrong", "new_password"))
             }
         }
 
         val exception =
             assertFailsWith<ResponseStatusException> {
-                userService.changePassword("throttle-change", ChangePasswordRequest("secret", "new-password"))
+                userService.changePassword("throttle_change", ChangePasswordRequest("secret", "new_password"))
             }
 
         assertEquals(HttpStatus.TOO_MANY_REQUESTS, exception.statusCode)

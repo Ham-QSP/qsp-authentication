@@ -109,9 +109,9 @@ class CurrentUserTokenCustomizerTest {
 
     @Test
     fun `roles come from the current user, not from the login`() {
-        val user = createUser("refresh-demoted")
+        val user = createUser("refresh_demoted")
         update(user, roles = setOf("ROLE_ADMIN"))
-        val principal = login("refresh-demoted")
+        val principal = login("refresh_demoted")
 
         update(user, roles = setOf("ROLE_USER"))
 
@@ -120,8 +120,8 @@ class CurrentUserTokenCustomizerTest {
 
     @Test
     fun `disabled user cannot refresh`() {
-        val user = createUser("refresh-disabled")
-        val principal = login("refresh-disabled")
+        val user = createUser("refresh_disabled")
+        val principal = login("refresh_disabled")
 
         update(user, enabled = false)
 
@@ -130,8 +130,8 @@ class CurrentUserTokenCustomizerTest {
 
     @Test
     fun `user whose password expired cannot refresh`() {
-        val user = createUser("refresh-expired")
-        val principal = login("refresh-expired")
+        val user = createUser("refresh_expired")
+        val principal = login("refresh_expired")
 
         update(user, passwordExpiration = LocalDateTime.now().minusMinutes(1))
 
@@ -140,26 +140,26 @@ class CurrentUserTokenCustomizerTest {
 
     @Test
     fun `unknown user cannot refresh`() {
-        assertRefreshRejected(UsernamePasswordAuthenticationToken.authenticated("refresh-ghost", null, emptyList()))
+        assertRefreshRejected(UsernamePasswordAuthenticationToken.authenticated("refresh_ghost", null, emptyList()))
     }
 
     @Test
     fun `password change revokes logins made before it`() {
-        createUser("refresh-changed")
-        val principal = login("refresh-changed")
+        createUser("refresh_changed")
+        val principal = login("refresh_changed")
 
-        userService.changePassword("refresh-changed", ChangePasswordRequest("secret", "new-password"))
+        userService.changePassword("refresh_changed", ChangePasswordRequest("secret", "new_password"))
 
         assertRefreshRejected(principal)
     }
 
     @Test
     fun `login made after a password change can refresh`() {
-        createUser("refresh-after-change")
-        userService.changePassword("refresh-after-change", ChangePasswordRequest("secret", "new-password"))
-        userService.changePassword("refresh-after-change", ChangePasswordRequest("new-password", "secret"))
+        createUser("refresh_after_change")
+        userService.changePassword("refresh_after_change", ChangePasswordRequest("secret", "new_password"))
+        userService.changePassword("refresh_after_change", ChangePasswordRequest("new_password", "secret"))
 
-        val principal = login("refresh-after-change")
+        val principal = login("refresh_after_change")
 
         assertEquals(setOf("USER"), refreshedAccessTokenClaims(principal)["roles"])
     }

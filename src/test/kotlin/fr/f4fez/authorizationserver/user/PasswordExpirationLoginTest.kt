@@ -67,23 +67,23 @@ class PasswordExpirationLoginTest {
 
     @Test
     fun `login is rejected when the password has expired`() {
-        createUser("login-expired", LocalDateTime.now().minusDays(1))
+        createUser("login_expired", LocalDateTime.now().minusDays(1))
 
-        assertFailsWith<CredentialsExpiredException> { authenticate("login-expired") }
+        assertFailsWith<CredentialsExpiredException> { authenticate("login_expired") }
     }
 
     @Test
     fun `login succeeds when the password expires in the future`() {
-        createUser("login-future", LocalDateTime.now().plusDays(1))
+        createUser("login_future", LocalDateTime.now().plusDays(1))
 
-        assertTrue(authenticate("login-future").isAuthenticated)
+        assertTrue(authenticate("login_future").isAuthenticated)
     }
 
     @Test
     fun `login succeeds when the password never expires`() {
-        createUser("login-never", null)
+        createUser("login_never", null)
 
-        assertTrue(authenticate("login-never").isAuthenticated)
+        assertTrue(authenticate("login_never").isAuthenticated)
     }
 
     companion object {

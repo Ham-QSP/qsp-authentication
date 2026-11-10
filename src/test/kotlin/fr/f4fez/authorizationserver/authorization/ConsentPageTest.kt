@@ -101,7 +101,7 @@ class ConsentPageTest {
                 .queryParam("client_id", "portal")
                 .queryParam("scope", "openid profile")
                 .queryParam("redirect_uri", "http://localhost:3000")
-                .queryParam("state", "state-1")
+                .queryParam("state", "state_1")
                 .queryParam("code_challenge", "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM")
                 .queryParam("code_challenge_method", "S256"),
         )
@@ -182,7 +182,7 @@ class ConsentPageTest {
 
     @Test
     fun `consent page is rendered from the shared layout`() {
-        val session = loggedInSession("consent-page")
+        val session = loggedInSession("consent_page")
         val consentUrl = authorize(session).andReturn().response.redirectedUrl!!
         assertTrue(consentUrl.contains("/oauth2/consent"), "Redirected to $consentUrl")
 
@@ -197,7 +197,7 @@ class ConsentPageTest {
 
     @Test
     fun `accepting consent returns an authorization code to the client`() {
-        val session = loggedInSession("consent-accept")
+        val session = loggedInSession("consent_accept")
         val page = openConsentPage(session)
 
         assertEquals("/oauth2/authorize", page.accept.action)
@@ -214,7 +214,7 @@ class ConsentPageTest {
 
     @Test
     fun `refusing consent returns access_denied to the client`() {
-        val session = loggedInSession("consent-refuse")
+        val session = loggedInSession("consent_refuse")
         val page = openConsentPage(session)
 
         assertEquals("/oauth2/authorize", page.refuse.action)

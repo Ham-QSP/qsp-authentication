@@ -50,7 +50,7 @@ class UserPasswordTest {
         userService.create(
             CreateUserRequest(
                 username = username,
-                password = "old-password",
+                password = "old_password",
                 email = "$username@localhost",
                 enabled = true,
             ),
@@ -58,45 +58,45 @@ class UserPasswordTest {
 
     @Test
     fun `changePassword stores the new password when the current one matches`() {
-        createUser("pwd-ok")
+        createUser("pwd_ok")
 
-        userService.changePassword("pwd-ok", ChangePasswordRequest("old-password", "new-password"))
+        userService.changePassword("pwd_ok", ChangePasswordRequest("old_password", "new_password"))
 
-        val stored = userService.findByUsername("pwd-ok").password
-        assertTrue(passwordEncoder.matches("new-password", stored))
+        val stored = userService.findByUsername("pwd_ok").password
+        assertTrue(passwordEncoder.matches("new_password", stored))
     }
 
     @Test
     fun `changePassword rejects a wrong current password and keeps the old one`() {
-        createUser("pwd-wrong")
+        createUser("pwd_wrong")
 
         val exception =
             assertFailsWith<ResponseStatusException> {
-                userService.changePassword("pwd-wrong", ChangePasswordRequest("not-the-password", "new-password"))
+                userService.changePassword("pwd_wrong", ChangePasswordRequest("not_the_password", "new_password"))
             }
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.statusCode)
-        val stored = userService.findByUsername("pwd-wrong").password
-        assertTrue(passwordEncoder.matches("old-password", stored))
+        val stored = userService.findByUsername("pwd_wrong").password
+        assertTrue(passwordEncoder.matches("old_password", stored))
     }
 
     @Test
     fun `changePassword clears the password expiration`() {
-        createUser("pwd-expired")
+        createUser("pwd_expired")
         jdbcTemplate.update(
             "update qsp_auth_users set password_expiration = now() - interval '1 day' where username = ?",
-            "pwd-expired",
+            "PWD_EXPIRED",
         )
-        assertNotNull(userService.findByUsername("pwd-expired").passwordExpiration)
+        assertNotNull(userService.findByUsername("pwd_expired").passwordExpiration)
 
-        userService.changePassword("pwd-expired", ChangePasswordRequest("old-password", "new-password"))
+        userService.changePassword("pwd_expired", ChangePasswordRequest("old_password", "new_password"))
 
-        assertNull(userService.findByUsername("pwd-expired").passwordExpiration)
+        assertNull(userService.findByUsername("pwd_expired").passwordExpiration)
     }
 
     @Test
     fun `update sets the password expiration`() {
-        val user = createUser("exp-set")
+        val user = createUser("exp_set")
         val expiration = LocalDateTime.of(2030, 1, 2, 3, 4, 5)
 
         val updated =
@@ -121,7 +121,7 @@ class UserPasswordTest {
 
     @Test
     fun `update without password expiration keeps it`() {
-        val user = createUser("exp-keep")
+        val user = createUser("exp_keep")
         expireIn2030(user)
 
         userService.update(user.id!!, UpdateUserRequest(email = "exp-keep@localhost", enabled = false))
@@ -131,7 +131,7 @@ class UserPasswordTest {
 
     @Test
     fun `update with an empty password expiration clears it`() {
-        val user = createUser("exp-clear")
+        val user = createUser("exp_clear")
         expireIn2030(user)
 
         userService.update(
@@ -144,7 +144,7 @@ class UserPasswordTest {
 
     @Test
     fun `password set by an admin expires immediately, so the user must choose their own`() {
-        val user = createUser("exp-reset")
+        val user = createUser("exp_reset")
 
         userService.update(
             user.id!!,
@@ -157,7 +157,7 @@ class UserPasswordTest {
 
     @Test
     fun `password set by an admin keeps an explicitly given expiration`() {
-        val user = createUser("exp-reset-explicit")
+        val user = createUser("exp_reset_explicit")
 
         userService.update(
             user.id!!,
@@ -174,7 +174,7 @@ class UserPasswordTest {
 
     @Test
     fun `update sets emailValidated and keeps it when absent`() {
-        val user = createUser("mail-validated")
+        val user = createUser("mail_validated")
 
         userService.update(
             user.id!!,

@@ -89,7 +89,7 @@ class LogoutPageTest {
 
     @Test
     fun `logout confirmation page is rendered from the shared layout`() {
-        val session = loggedInSession("logout-page")
+        val session = loggedInSession("logout_page")
 
         mockMvc
             .perform(get("/logout").session(session))
@@ -101,7 +101,7 @@ class LogoutPageTest {
 
     @Test
     fun `confirming logout signs out and returns to the login page`() {
-        val session = loggedInSession("logout-confirm")
+        val session = loggedInSession("logout_confirm")
 
         mockMvc
             .perform(post("/logout").session(session).param("_csrf", csrfToken("/logout", session)))

@@ -38,7 +38,7 @@ class UserServiceTest {
         val user =
             userService.create(
                 CreateUserRequest(
-                    username = "to-delete",
+                    username = "to_delete",
                     password = "secret",
                     email = "to-delete@localhost",
                     enabled = true,

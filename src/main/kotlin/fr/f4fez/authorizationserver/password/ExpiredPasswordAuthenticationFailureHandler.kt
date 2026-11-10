@@ -14,6 +14,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>
  */
 package fr.f4fez.authorizationserver.password
 
+import fr.f4fez.authorizationserver.user.Usernames
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.security.authentication.CredentialsExpiredException
@@ -48,7 +49,7 @@ class ExpiredPasswordAuthenticationFailureHandler : AuthenticationFailureHandler
 
         val session = request.getSession(true)
         request.changeSessionId()
-        session.setAttribute(EXPIRED_PASSWORD_USERNAME, request.getParameter(USERNAME_PARAMETER))
+        session.setAttribute(EXPIRED_PASSWORD_USERNAME, Usernames.normalize(request.getParameter(USERNAME_PARAMETER)))
         redirectStrategy.sendRedirect(request, response, "/password")
     }
 }

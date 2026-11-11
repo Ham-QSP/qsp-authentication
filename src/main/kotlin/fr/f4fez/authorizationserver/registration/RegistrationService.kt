@@ -52,6 +52,7 @@ class RegistrationService(
     private val passwordEncoder: PasswordEncoder,
     private val passwordPolicy: PasswordPolicy,
     private val mailer: RegistrationMailer,
+    private val stationProvisioner: StationProvisioner,
     private val properties: RegistrationProperties,
     private val clock: Clock,
 ) {
@@ -154,6 +155,7 @@ class RegistrationService(
             return abandon(registration, "callsign or email taken by a concurrent validation")
         }
         registrations.delete(registration)
+        stationProvisioner.provision(registration.callsign)
         return VerifyResult.Created(registration.callsign)
     }
 

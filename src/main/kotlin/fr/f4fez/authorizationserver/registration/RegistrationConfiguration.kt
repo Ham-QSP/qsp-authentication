@@ -20,5 +20,5 @@ import org.springframework.scheduling.annotation.EnableScheduling
 
 @Configuration
 @EnableScheduling
-@EnableConfigurationProperties(MailProperties::class, RegistrationProperties::class)
+@EnableConfigurationProperties(MailProperties::class, RegistrationProperties::class, SignalingProperties::class)
 class RegistrationConfiguration

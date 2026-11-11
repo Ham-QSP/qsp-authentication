@@ -1,0 +1,54 @@
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>
+
+# Self-registration requests waiting for an email validation, kept apart from the real accounts.
+databaseChangeLog:
+- changeSet:
+    id:  8
+    author:  "Florian MAZEN"
+    changes:
+      - sql:
+          sql: >
+            create table qsp_auth_registrations (
+              id uuid primary key default gen_random_uuid(),
+              callsign varchar(100) not null,
+              email varchar(320) not null,
+              password_hash varchar(100) not null,
+              code_hash varchar(100) not null,
+              code_expires_at timestamp not null,
+              failed_attempts integer not null default 0,
+              last_sent_at timestamp not null,
+              status varchar(30) not null,
+              created_at timestamp not null
+            )
+      - sql:
+          sql: create unique index ux_auth_registrations_callsign_upper on qsp_auth_registrations (upper(callsign))
+      - sql:
+          sql: create unique index ux_auth_registrations_email_lower on qsp_auth_registrations (lower(email))
+      - sql:
+          sql: >
+            create table qsp_auth_registration_sends (
+              id uuid primary key default gen_random_uuid(),
+              email varchar(320) not null,
+              callsign varchar(100) not null,
+              sent_at timestamp not null
+            )
+      - sql:
+          sql: create index ix_auth_registration_sends_email on qsp_auth_registration_sends (email, sent_at)
+      - sql:
+          sql: create index ix_auth_registration_sends_callsign on qsp_auth_registration_sends (callsign, sent_at)
+    rollback:
+      - sql:
+          sql: drop table qsp_auth_registration_sends
+      - sql:
+          sql: drop table qsp_auth_registrations

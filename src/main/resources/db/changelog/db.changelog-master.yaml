@@ -17,3 +17,6 @@ databaseChangeLog:
   - include:
       file: 00005_case_insensitive_identifiers.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 00006_registrations.yaml
+      relativeToChangelogFile: true

@@ -16,7 +16,9 @@ package fr.f4fez.authorizationserver.registration
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration
+import org.springframework.scheduling.annotation.EnableScheduling
 
 @Configuration
-@EnableConfigurationProperties(MailProperties::class)
+@EnableScheduling
+@EnableConfigurationProperties(MailProperties::class, RegistrationProperties::class)
 class RegistrationConfiguration

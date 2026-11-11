@@ -17,7 +17,10 @@ package fr.f4fez.authorizationserver.registration
 import fr.f4fez.authorizationserver.user.Emails
 import fr.f4fez.authorizationserver.user.PasswordPolicy
 import fr.f4fez.authorizationserver.user.UserRepository
+import fr.f4fez.authorizationserver.user.UserService
 import fr.f4fez.authorizationserver.user.Usernames
+import org.slf4j.LoggerFactory
+import org.springframework.dao.DuplicateKeyException
 import org.springframework.http.HttpStatus
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
@@ -28,6 +31,15 @@ import java.time.Clock
 import java.time.Duration
 import java.time.LocalDateTime
 
+sealed interface VerifyResult {
+    data class Created(
+        val callsign: String,
+    ) : VerifyResult
+
+    /** Wrong code, unknown, expired or cancelled registration: deliberately not told apart. */
+    data object Invalid : VerifyResult
+}
+
 /**
  * Self-registration: a request is kept in its own table until its email is validated with a code.
  * Rate-limited and unknown-registration cases return silently so the pages answer the same way every time.
@@ -36,12 +48,14 @@ import java.time.LocalDateTime
 class RegistrationService(
     private val registrations: RegistrationRepository,
     private val userRepository: UserRepository,
+    private val userService: UserService,
     private val passwordEncoder: PasswordEncoder,
     private val passwordPolicy: PasswordPolicy,
     private val mailer: RegistrationMailer,
     private val properties: RegistrationProperties,
     private val clock: Clock,
 ) {
+    private val logger = LoggerFactory.getLogger(RegistrationService::class.java)
     private val random = SecureRandom()
 
     @Transactional
@@ -109,6 +123,56 @@ class RegistrationService(
             ),
         )
         sendCode(registration.email, registration.callsign, code, now)
+    }
+
+    /**
+     * Not transactional as a whole: a wrong attempt must stay counted, and a unique-index violation on the
+     * user (a concurrent validation) must not leave an aborted transaction behind.
+     */
+    fun verify(
+        callsign: String,
+        code: String,
+    ): VerifyResult {
+        val registration =
+            registrations.findByNormalizedCallsign(Usernames.normalize(callsign)) ?: return VerifyResult.Invalid
+        if (registration.codeExpiresAt.isBefore(now())) {
+            return VerifyResult.Invalid
+        }
+        if (!passwordEncoder.matches(code.trim(), registration.codeHash)) {
+            recordFailedAttempt(registration)
+            return VerifyResult.Invalid
+        }
+
+        if (userRepository.existsByNormalizedUsername(registration.callsign) ||
+            userRepository.existsByNormalizedEmail(registration.email)
+        ) {
+            return abandon(registration, "callsign or email taken since the request")
+        }
+        try {
+            userService.createValidated(registration.callsign, registration.email, registration.passwordHash)
+        } catch (e: DuplicateKeyException) {
+            return abandon(registration, "callsign or email taken by a concurrent validation")
+        }
+        registrations.delete(registration)
+        return VerifyResult.Created(registration.callsign)
+    }
+
+    private fun recordFailedAttempt(registration: Registration) {
+        val attempts = registration.failedAttempts + 1
+        if (attempts >= properties.maxAttempts) {
+            registrations.delete(registration)
+        } else {
+            registrations.save(registration.copy(failedAttempts = attempts))
+        }
+    }
+
+    private fun abandon(
+        registration: Registration,
+        reason: String,
+    ): VerifyResult {
+        logger.info("Registration of {} dropped: {}", registration.callsign, reason)
+        registrations.delete(registration)
+        return VerifyResult.Invalid
     }
 
     @Transactional

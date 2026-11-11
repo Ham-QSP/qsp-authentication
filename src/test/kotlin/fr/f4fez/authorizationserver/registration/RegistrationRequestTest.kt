@@ -20,6 +20,8 @@ import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpStatus
@@ -220,6 +222,41 @@ class RegistrationRequestTest {
 
         assertNull(registrations.findByNormalizedCallsign("F4RQQ"))
         assertNotNull(registrations.findByNormalizedCallsign("F4RQR"))
+    }
+
+    @Test
+    fun `a request with an email in use cancels the pending registration of the callsign like a normal request`() {
+        userService.create(CreateUserRequest(username = "F4RQS", password = password, email = "rqs@example.org"))
+        service.request("F4RQT", "rqt@example.org", password)
+        val oldCode = mailer.lastCodeFor("F4RQT")!!
+
+        service.request("F4RQT", "rqs@example.org", password)
+
+        assertNull(registrations.findByNormalizedCallsign("F4RQT"))
+        assertEquals(VerifyResult.Invalid, service.verify("F4RQT", oldCode))
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+        strings = [
+            "Victim <victim@example.com>",
+            "victim@example.com (note)",
+            "a@b.c, d@e.f",
+            "no-at-sign",
+            "nodomain@localhost",
+            "",
+        ],
+    )
+    fun `anything but a bare email address is refused`(email: String) {
+        assertEquals(HttpStatus.BAD_REQUEST, failure { service.request("F4RQU", email, password) }.statusCode)
+        assertTrue(mailer.codes.isEmpty() && mailer.notices.isEmpty())
+    }
+
+    @Test
+    fun `an email longer than the column is refused`() {
+        val email = "a".repeat(320) + "@example.org"
+
+        assertEquals(HttpStatus.BAD_REQUEST, failure { service.request("F4RQV", email, password) }.statusCode)
     }
 
     companion object {

@@ -179,6 +179,24 @@ class RegistrationVerifyTest {
         assertEquals(VerifyResult.Created("F4VFK"), service.verify("F4VFK", second))
     }
 
+    @Test
+    fun `parallel wrong codes cannot exceed the attempt limit`() {
+        val code = register("F4VFL")
+        val pool =
+            java.util.concurrent.Executors
+                .newFixedThreadPool(20)
+        try {
+            (1..40)
+                .map { pool.submit { service.verify("F4VFL", wrongCode(code)) } }
+                .forEach { it.get() }
+        } finally {
+            pool.shutdown()
+        }
+
+        assertNull(registrations.findByNormalizedCallsign("F4VFL"))
+        assertEquals(VerifyResult.Invalid, service.verify("F4VFL", code))
+    }
+
     companion object {
         var postgres: PostgreSQLContainer<*> = PostgreSQLContainer("postgres:17-alpine")
 

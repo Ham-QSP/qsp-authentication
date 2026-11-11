@@ -56,6 +56,16 @@ class RegistrationService(
     private val properties: RegistrationProperties,
     private val clock: Clock,
 ) {
+    private companion object {
+        const val MAX_EMAIL_LENGTH = 320
+
+        // A bare address only: no display name, comment or list, which mail libraries would still deliver
+        val BARE_EMAIL =
+            Regex(
+                "[A-Za-z0-9.!#\\$%&'*+/=?^_{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+",
+            )
+    }
+
     private val logger = LoggerFactory.getLogger(RegistrationService::class.java)
     private val random = SecureRandom()
 
@@ -70,6 +80,9 @@ class RegistrationService(
         if (!Callsigns.isValid(normalizedCallsign)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "This is not a valid callsign")
         }
+        if (!BARE_EMAIL.matches(normalizedEmail) || normalizedEmail.length > MAX_EMAIL_LENGTH) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "This is not a valid email address")
+        }
         if (userRepository.existsByNormalizedUsername(normalizedCallsign)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "This callsign already has an account")
         }
@@ -78,6 +91,10 @@ class RegistrationService(
         val now = now()
         if (userRepository.existsByNormalizedEmail(normalizedEmail)) {
             if (withinHourlyLimit(normalizedCallsign, normalizedEmail, now)) {
+                // Same effects and work as a normal request, so that nothing tells the two cases apart
+                registrations.deleteByCallsignOrEmail(normalizedCallsign, normalizedEmail)
+                passwordEncoder.encode(password)
+                passwordEncoder.encode(newCode())
                 mailer.sendAddressInUse(normalizedEmail)
                 registrations.recordSend(normalizedEmail, normalizedCallsign, now)
             }
@@ -139,8 +156,12 @@ class RegistrationService(
         if (registration.codeExpiresAt.isBefore(now())) {
             return VerifyResult.Invalid
         }
+        val id = registration.id!!
+        if (!registrations.reserveAttempt(id, properties.maxAttempts)) {
+            return VerifyResult.Invalid
+        }
         if (!passwordEncoder.matches(code.trim(), registration.codeHash)) {
-            recordFailedAttempt(registration)
+            registrations.deleteIfAttemptsUsedUp(id, properties.maxAttempts)
             return VerifyResult.Invalid
         }
 
@@ -157,15 +178,6 @@ class RegistrationService(
         registrations.delete(registration)
         stationProvisioner.provision(registration.callsign)
         return VerifyResult.Created(registration.callsign)
-    }
-
-    private fun recordFailedAttempt(registration: Registration) {
-        val attempts = registration.failedAttempts + 1
-        if (attempts >= properties.maxAttempts) {
-            registrations.delete(registration)
-        } else {
-            registrations.save(registration.copy(failedAttempts = attempts))
-        }
     }
 
     private fun abandon(

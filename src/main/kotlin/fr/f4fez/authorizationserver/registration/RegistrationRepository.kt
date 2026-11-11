@@ -35,6 +35,27 @@ interface RegistrationRepository : CrudRepository<Registration, UUID> {
         email: String,
     )
 
+    /**
+     * Atomically takes one verification attempt; false when the attempts are used up. Taken before the code is
+     * checked, so parallel guesses cannot exceed the limit.
+     */
+    @Modifying
+    @Query(
+        "update qsp_auth_registrations set failed_attempts = failed_attempts + 1 " +
+            "where id = :id and failed_attempts < :maxAttempts",
+    )
+    fun reserveAttempt(
+        id: UUID,
+        maxAttempts: Int,
+    ): Boolean
+
+    @Modifying
+    @Query("delete from qsp_auth_registrations where id = :id and failed_attempts >= :maxAttempts")
+    fun deleteIfAttemptsUsedUp(
+        id: UUID,
+        maxAttempts: Int,
+    )
+
     @Modifying
     @Query("delete from qsp_auth_registrations where created_at < :threshold")
     fun deleteCreatedBefore(threshold: LocalDateTime): Int

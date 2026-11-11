@@ -33,3 +33,21 @@ qsp.password-policy:
   min-digits: 1
   min-special: 1
   reject-username: true
+
+# Self-registration. The mail server is configured with the standard Spring properties,
+# e.g. SPRING_MAIL_HOST, SPRING_MAIL_PORT, SPRING_MAIL_USERNAME, SPRING_MAIL_PASSWORD.
+qsp.mail:
+  from: noreply@localhost
+
+qsp.registration:
+  code-ttl: 15m
+  max-attempts: 5
+  max-sends-per-hour: 3
+  resend-interval: 60s
+  retention: 24h
+
+# Signaling service called to create the station of a new user; issuer must match its issuer-uri.
+qsp.signaling:
+  base-url: http://localhost:7080
+  issuer: http://localhost:9000
+  subject: qsp-authentication

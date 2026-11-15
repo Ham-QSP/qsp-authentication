@@ -182,7 +182,7 @@ class SignupPagesTest {
     }
 
     @Test
-    fun `the right code creates the account and shows the sign in link`() {
+    fun `the right code creates the account, shows the sign in link and warns when the station failed`() {
         signup("F4PGG", "pgg@example.org")
         val code = mailer.lastCodeFor("F4PGG")!!
 
@@ -190,6 +190,8 @@ class SignupPagesTest {
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("href=\"/login\"")))
             .andExpect(content().string(containsString("F4PGG")))
+            .andExpect(content().string(containsString("auth-alert--warning")))
+            .andExpect(content().string(containsString("station could not be created")))
 
         assertTrue(userService.findByUsername("F4PGG").emailValidated)
     }

@@ -70,7 +70,9 @@ class RegistrationController(
     ): ModelAndView =
         when (val result = registrationService.verify(callsign, code)) {
             is VerifyResult.Created -> {
-                ModelAndView("signup-done").addObject("callsign", result.callsign)
+                ModelAndView("signup-done")
+                    .addObject("callsign", result.callsign)
+                    .addObject("stationProvisioned", result.stationProvisioned)
             }
 
             VerifyResult.Invalid -> {

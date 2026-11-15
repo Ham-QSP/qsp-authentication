@@ -80,7 +80,7 @@ class RegistrationVerifyTest {
     fun `the right code creates an enabled and validated user with the chosen password`() {
         val code = register("F4VFA")
 
-        assertEquals(VerifyResult.Created("F4VFA"), service.verify("F4VFA", code))
+        assertEquals(VerifyResult.Created("F4VFA", stationProvisioned = false), service.verify("F4VFA", code))
 
         val user = userService.findByUsername("F4VFA")
         assertTrue(user.enabled)
@@ -103,7 +103,7 @@ class RegistrationVerifyTest {
     fun `callsign and code are accepted in any case and with surrounding spaces`() {
         val code = register("F4VFC")
 
-        assertEquals(VerifyResult.Created("F4VFC"), service.verify(" f4vfc ", " $code "))
+        assertEquals(VerifyResult.Created("F4VFC", stationProvisioned = false), service.verify(" f4vfc ", " $code "))
     }
 
     @Test
@@ -176,7 +176,7 @@ class RegistrationVerifyTest {
             assertEquals(VerifyResult.Invalid, service.verify("F4VFK", first))
         }
         assertNotNull(registrations.findByNormalizedCallsign("F4VFK"))
-        assertEquals(VerifyResult.Created("F4VFK"), service.verify("F4VFK", second))
+        assertEquals(VerifyResult.Created("F4VFK", stationProvisioned = false), service.verify("F4VFK", second))
     }
 
     @Test

@@ -8,6 +8,17 @@ spring:
     url: jdbc:postgresql://localhost:5432/postgres
     username: postgres
     password: pgpass
+  mail:
+    host: localhost
+    port: 1025
+    username:
+    password:
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
 
 logging:
   level:

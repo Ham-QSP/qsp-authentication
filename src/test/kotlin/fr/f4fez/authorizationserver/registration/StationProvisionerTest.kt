@@ -149,13 +149,22 @@ class StationProvisionerTest {
     }
 
     @Test
-    fun `the account is created even when signaling is down`() {
+    fun `the account is created and the failure reported when signaling is down`() {
         respond = { _, _ -> 503 to "{}" }
         registrationService.request("F4PVF", "pvf@example.org", "Str0ng!Passw0rd")
 
         val result = registrationService.verify("F4PVF", mailer.lastCodeFor("F4PVF")!!)
 
-        assertEquals(VerifyResult.Created("F4PVF"), result)
+        assertEquals(VerifyResult.Created("F4PVF", stationProvisioned = false), result)
+    }
+
+    @Test
+    fun `a provisioned station is reported as such`() {
+        registrationService.request("F4PVG", "pvg@example.org", "Str0ng!Passw0rd")
+
+        val result = registrationService.verify("F4PVG", mailer.lastCodeFor("F4PVG")!!)
+
+        assertEquals(VerifyResult.Created("F4PVG", stationProvisioned = true), result)
     }
 
     companion object {

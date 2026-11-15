@@ -34,6 +34,8 @@ import java.time.LocalDateTime
 sealed interface VerifyResult {
     data class Created(
         val callsign: String,
+        /** False when signaling could not create the station: the account is valid but the user must be told. */
+        val stationProvisioned: Boolean,
     ) : VerifyResult
 
     /** Wrong code, unknown, expired or cancelled registration: deliberately not told apart. */
@@ -176,8 +178,8 @@ class RegistrationService(
             return abandon(registration, "callsign or email taken by a concurrent validation")
         }
         registrations.delete(registration)
-        stationProvisioner.provision(registration.callsign)
-        return VerifyResult.Created(registration.callsign)
+        val provisioned = stationProvisioner.provision(registration.callsign)
+        return VerifyResult.Created(registration.callsign, provisioned)
     }
 
     private fun abandon(

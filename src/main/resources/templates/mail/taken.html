@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{mail/layout :: layout(#{mail.taken.subject}, ~{::content})}">
+<body>
+<div th:fragment="content">
+    <p th:text="#{mail.taken.html.notice}">Someone tried to create a QSP account with this email address, which already has an account.</p>
+    <p style="color:#52606d;" th:text="#{mail.taken.html.advice}">If it was you, sign in with your existing account. Otherwise you can ignore this email.</p>
+</div>
+</body>
+</html>

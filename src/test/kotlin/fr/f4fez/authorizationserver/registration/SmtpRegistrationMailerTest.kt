@@ -14,14 +14,21 @@ along with this program. If not, see <https://www.gnu.org/licenses/>
  */
 package fr.f4fez.authorizationserver.registration
 
+import jakarta.mail.Multipart
+import jakarta.mail.Part
+import jakarta.mail.Session
+import jakarta.mail.internet.MimeMessage
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.context.support.ResourceBundleMessageSource
-import org.springframework.mail.SimpleMailMessage
 import org.springframework.mail.javamail.JavaMailSender
+import org.thymeleaf.spring6.SpringTemplateEngine
+import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
+import java.util.Properties
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -30,6 +37,21 @@ class SmtpRegistrationMailerTest {
     private val sender = mock(JavaMailSender::class.java)
     private val messages = ResourceBundleMessageSource().apply { setBasenames("messages") }
     private val properties = MailProperties().apply { from = "noreply@qsp.test" }
+    private val templates =
+        SpringTemplateEngine().apply {
+            setTemplateResolver(
+                ClassLoaderTemplateResolver().apply {
+                    prefix = "templates/"
+                    suffix = ".html"
+                    characterEncoding = "UTF-8"
+                },
+            )
+            setTemplateEngineMessageSource(messages)
+        }
+
+    init {
+        `when`(sender.createMimeMessage()).thenAnswer { MimeMessage(Session.getInstance(Properties())) }
+    }
 
     private fun mailer(available: JavaMailSender? = sender) =
         SmtpRegistrationMailer(
@@ -43,13 +65,25 @@ class SmtpRegistrationMailerTest {
                 override fun getIfUnique() = available
             },
             messages,
+            templates,
             properties,
         )
 
-    private fun sent(): SimpleMailMessage {
-        val captor = ArgumentCaptor.forClass(SimpleMailMessage::class.java)
+    private fun sent(): MimeMessage {
+        val captor = ArgumentCaptor.forClass(MimeMessage::class.java)
         verify(sender).send(captor.capture())
-        return captor.value
+        // What the real sender does before transport: it fixes the headers from the content
+        return captor.value.apply { saveChanges() }
+    }
+
+    /** Text of the first body part of the given type, looking through nested multiparts. */
+    private fun body(
+        part: Part,
+        type: String,
+    ): String? {
+        if (part.isMimeType(type)) return part.content as String
+        val content = part.content as? Multipart ?: return null
+        return (0 until content.count).firstNotNullOfOrNull { body(content.getBodyPart(it), type) }
     }
 
     @Test
@@ -57,11 +91,30 @@ class SmtpRegistrationMailerTest {
         mailer().sendCode("ham@example.org", "F4FEZ", "123456", 15)
 
         val mail = sent()
-        assertEquals("ham@example.org", mail.to?.single())
-        assertEquals("noreply@qsp.test", mail.from)
-        assertContains(mail.text!!, "123456")
-        assertContains(mail.text!!, "F4FEZ")
-        assertContains(mail.text!!, "15")
+        assertEquals("ham@example.org", mail.allRecipients.single().toString())
+        assertEquals("noreply@qsp.test", mail.from.single().toString())
+        val text = body(mail, "text/plain")!!
+        assertContains(text, "123456")
+        assertContains(text, "F4FEZ")
+        assertContains(text, "15")
+    }
+
+    @Test
+    fun `the code mail also carries an HTML version rendered from the template`() {
+        mailer().sendCode("ham@example.org", "F4FEZ", "123456", 15)
+
+        val html = body(sent(), "text/html")!!
+        assertContains(html, "123456")
+        assertContains(html, "F4FEZ")
+        assertContains(html, "15 minutes")
+    }
+
+    @Test
+    fun `the HTML version escapes what it is given`() {
+        mailer().sendCode("ham@example.org", "<b>F4FEZ</b>", "123456", 15)
+
+        val html = body(sent(), "text/html")!!
+        assertContains(html, "&lt;b&gt;F4FEZ&lt;/b&gt;")
     }
 
     @Test
@@ -69,8 +122,9 @@ class SmtpRegistrationMailerTest {
         mailer().sendAddressInUse("ham@example.org")
 
         val mail = sent()
-        assertEquals("ham@example.org", mail.to?.single())
+        assertEquals("ham@example.org", mail.allRecipients.single().toString())
         assertContains(mail.subject!!, "QSP")
+        assertContains(body(mail, "text/html")!!, "already has an account")
     }
 
     @Test

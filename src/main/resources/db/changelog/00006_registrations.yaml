@@ -17,38 +17,121 @@ databaseChangeLog:
     id:  8
     author:  "Florian MAZEN"
     changes:
-      - sql:
-          sql: >
-            create table qsp_auth_registrations (
-              id uuid primary key default gen_random_uuid(),
-              callsign varchar(100) not null,
-              email varchar(320) not null,
-              password_hash varchar(100) not null,
-              code_hash varchar(100) not null,
-              code_expires_at timestamp not null,
-              failed_attempts integer not null default 0,
-              last_sent_at timestamp not null,
-              status varchar(30) not null,
-              created_at timestamp not null
-            )
-      - sql:
-          sql: create unique index ux_auth_registrations_callsign_upper on qsp_auth_registrations (upper(callsign))
-      - sql:
-          sql: create unique index ux_auth_registrations_email_lower on qsp_auth_registrations (lower(email))
-      - sql:
-          sql: >
-            create table qsp_auth_registration_sends (
-              id uuid primary key default gen_random_uuid(),
-              email varchar(320) not null,
-              callsign varchar(100) not null,
-              sent_at timestamp not null
-            )
-      - sql:
-          sql: create index ix_auth_registration_sends_email on qsp_auth_registration_sends (email, sent_at)
-      - sql:
-          sql: create index ix_auth_registration_sends_callsign on qsp_auth_registration_sends (callsign, sent_at)
+      - createTable:
+          tableName: qsp_auth_registrations
+          columns:
+            - column:
+                name: id
+                type: uuid
+                defaultValueComputed: gen_random_uuid()
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: callsign
+                type: varchar(100)
+                constraints:
+                  nullable: false
+            - column:
+                name: email
+                type: varchar(320)
+                constraints:
+                  nullable: false
+            - column:
+                name: password_hash
+                type: varchar(100)
+                constraints:
+                  nullable: false
+            - column:
+                name: code_hash
+                type: varchar(100)
+                constraints:
+                  nullable: false
+            - column:
+                name: code_expires_at
+                type: timestamp
+                constraints:
+                  nullable: false
+            - column:
+                name: failed_attempts
+                type: integer
+                defaultValueNumeric: 0
+                constraints:
+                  nullable: false
+            - column:
+                name: last_sent_at
+                type: timestamp
+                constraints:
+                  nullable: false
+            - column:
+                name: status
+                type: varchar(30)
+                constraints:
+                  nullable: false
+            - column:
+                name: created_at
+                type: timestamp
+                constraints:
+                  nullable: false
+      - createIndex:
+          indexName: ux_auth_registrations_callsign_upper
+          tableName: qsp_auth_registrations
+          unique: true
+          columns:
+            - column:
+                name: upper(callsign)
+                computed: true
+      - createIndex:
+          indexName: ux_auth_registrations_email_lower
+          tableName: qsp_auth_registrations
+          unique: true
+          columns:
+            - column:
+                name: lower(email)
+                computed: true
+      - createTable:
+          tableName: qsp_auth_registration_sends
+          columns:
+            - column:
+                name: id
+                type: uuid
+                defaultValueComputed: gen_random_uuid()
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: email
+                type: varchar(320)
+                constraints:
+                  nullable: false
+            - column:
+                name: callsign
+                type: varchar(100)
+                constraints:
+                  nullable: false
+            - column:
+                name: sent_at
+                type: timestamp
+                constraints:
+                  nullable: false
+      - createIndex:
+          indexName: ix_auth_registration_sends_email
+          tableName: qsp_auth_registration_sends
+          columns:
+            - column:
+                name: email
+            - column:
+                name: sent_at
+      - createIndex:
+          indexName: ix_auth_registration_sends_callsign
+          tableName: qsp_auth_registration_sends
+          columns:
+            - column:
+                name: callsign
+            - column:
+                name: sent_at
     rollback:
-      - sql:
-          sql: drop table qsp_auth_registration_sends
-      - sql:
-          sql: drop table qsp_auth_registrations
+      - dropTable:
+          tableName: qsp_auth_registration_sends
+      - dropTable:
+          tableName: qsp_auth_registrations

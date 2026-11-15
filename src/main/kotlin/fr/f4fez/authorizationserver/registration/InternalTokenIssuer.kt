@@ -23,7 +23,6 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder
 import org.springframework.stereotype.Component
 import java.time.Clock
-import java.time.Duration
 import java.util.UUID
 
 /**
@@ -37,7 +36,6 @@ class InternalTokenIssuer(
     private val clock: Clock,
 ) {
     companion object {
-        val LIFETIME: Duration = Duration.ofSeconds(15)
         const val ROLE = "SYS_AUTH"
     }
 
@@ -52,7 +50,7 @@ class InternalTokenIssuer(
                 .subject(properties.subject)
                 .id(UUID.randomUUID().toString())
                 .issuedAt(now)
-                .expiresAt(now.plus(LIFETIME))
+                .expiresAt(now.plus(properties.tokenLifetime))
                 .claim("roles", listOf(ROLE))
                 .build()
         val header = JwsHeader.with(SignatureAlgorithm.RS256).build()

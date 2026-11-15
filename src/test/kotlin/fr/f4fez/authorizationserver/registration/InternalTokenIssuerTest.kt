@@ -32,7 +32,13 @@ import java.time.Duration
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 
-@SpringBootTest(properties = ["qsp.signaling.issuer=http://issuer.test", "qsp.signaling.subject=qsp-auth-test"])
+@SpringBootTest(
+    properties = [
+        "qsp.signaling.issuer=http://issuer.test",
+        "qsp.signaling.subject=qsp-auth-test",
+        "qsp.signaling.token-lifetime=20s",
+    ],
+)
 class InternalTokenIssuerTest {
     @Autowired
     lateinit var issuer: InternalTokenIssuer
@@ -55,10 +61,10 @@ class InternalTokenIssuerTest {
     }
 
     @Test
-    fun `the token lives fifteen seconds`() {
+    fun `the token lives as long as configured`() {
         val jwt = decoder().decode(issuer.issue())
 
-        assertEquals(Duration.ofSeconds(15), Duration.between(jwt.issuedAt, jwt.expiresAt))
+        assertEquals(Duration.ofSeconds(20), Duration.between(jwt.issuedAt, jwt.expiresAt))
     }
 
     @Test

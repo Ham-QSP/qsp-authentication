@@ -15,6 +15,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>
 package fr.f4fez.authorizationserver.registration
 
 import org.springframework.boot.context.properties.ConfigurationProperties
+import java.time.Duration
 
 @ConfigurationProperties(prefix = "qsp.signaling")
 class SignalingProperties {
@@ -25,4 +26,7 @@ class SignalingProperties {
 
     /** Subject of the internal token, a technical identity that is not a user. */
     var subject: String = "qsp-authentication"
+
+    /** Lifetime of the internal token: long enough for one call, short because the token is a powerful credential. */
+    var tokenLifetime: Duration = Duration.ofSeconds(15)
 }

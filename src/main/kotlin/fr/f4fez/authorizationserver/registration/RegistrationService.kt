@@ -130,6 +130,7 @@ class RegistrationService(
         if (registration.lastSentAt.plus(properties.resendInterval).isAfter(now) ||
             !withinHourlyLimit(registration.callsign, registration.email, now)
         ) {
+            logger.info("Resend for {} skipped: throttled", registration.callsign)
             return
         }
 

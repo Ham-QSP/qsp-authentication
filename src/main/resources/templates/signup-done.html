@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(#{signup.done.title}, ~{::content})}">
+<body>
+<div th:fragment="content">
+    <th:block th:if="${stationProvisioned}"><th:block th:replace="~{fragments/layout :: alert('info', #{signup.done.message(${callsign})})}"></th:block></th:block>
+    <th:block th:unless="${stationProvisioned}"><th:block th:replace="~{fragments/layout :: alert('warning', #{signup.done.station-failed(${callsign})})}"></th:block></th:block>
+    <p class="auth-actions"><a th:href="@{/login}" th:text="#{signup.done.sign-in}">Sign in</a></p>
+</div>
+</body>
+</html>

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(#{signup.verify.title}, ~{::content})}">
+<body>
+<div th:fragment="content">
+    <p th:text="#{signup.verify.intro}">Enter the code sent to your email address.</p>
+    <th:block th:if="${error}"><th:block th:replace="~{fragments/layout :: alert('error', ${error})}"></th:block></th:block>
+    <th:block th:if="${info}"><th:block th:replace="~{fragments/layout :: alert('info', ${info})}"></th:block></th:block>
+    <form method="post" th:action="@{/signup/verify}" class="auth-form">
+        <label for="callsign" th:text="#{signup.callsign}">Callsign</label>
+        <input type="text" id="callsign" name="callsign" th:value="${callsign}" autocomplete="username" autocapitalize="characters" required>
+        <label for="code" th:text="#{signup.verify.code}">Code</label>
+        <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" autofocus required>
+        <button type="submit" th:text="#{signup.verify.submit}">Verify</button>
+        <button type="submit" th:formaction="@{/signup/resend}" formnovalidate th:text="#{signup.verify.resend}">Send a new code</button>
+    </form>
+</div>
+</body>
+</html>

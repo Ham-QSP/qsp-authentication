@@ -141,6 +141,7 @@ class DefaultSecurityConfig {
                         "/swagger-ui.html",
                         "/css/**",
                         "/login",
+                        "/signup/**",
                         "/error",
                     ).permitAll()
                     .requestMatchers("/users/@me", "/users/@me/password")

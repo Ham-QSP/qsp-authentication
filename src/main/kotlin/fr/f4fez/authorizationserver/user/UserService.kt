@@ -83,6 +83,26 @@ class UserService(
         return userRepository.save(user)
     }
 
+    /**
+     * Creates the account of a validated self-registration. Identifiers must already be normalized and the password
+     * already encoded.
+     */
+    fun createValidated(
+        username: String,
+        email: String,
+        encodedPassword: String,
+    ): User =
+        userRepository.save(
+            User(
+                username = username,
+                password = encodedPassword,
+                enabled = true,
+                email = email,
+                emailValidated = true,
+                authorities = setOf(UserAuthority(DEFAULT_AUTHORITY)),
+            ),
+        )
+
     @Transactional
     fun update(
         id: UUID,

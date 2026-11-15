@@ -27,3 +27,6 @@ qsp.password-policy:
   min-digits: 0
   min-special: 0
   reject-username: false
+
+# No signaling service in the tests: registration tests that do not care fail fast and only log
+qsp.signaling.base-url: http://localhost:1

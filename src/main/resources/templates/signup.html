@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(#{signup.title}, ~{::content})}">
+<body>
+<div th:fragment="content">
+    <p th:text="#{signup.intro}">Your callsign is your login.</p>
+    <th:block th:if="${error}"><th:block th:replace="~{fragments/layout :: alert('error', ${error})}"></th:block></th:block>
+    <form method="post" th:action="@{/signup}" class="auth-form">
+        <label for="callsign" th:text="#{signup.callsign}">Callsign</label>
+        <input type="text" id="callsign" name="callsign" th:value="${callsign}" autocomplete="username" autocapitalize="characters" autofocus required>
+        <label for="email" th:text="#{signup.email}">Email</label>
+        <input type="email" id="email" name="email" th:value="${email}" autocomplete="email" required>
+        <label for="password" th:text="#{signup.password}">Password</label>
+        <input type="password" id="password" name="password" autocomplete="new-password" required>
+        <label for="confirmPassword" th:text="#{signup.confirm-password}">Confirm password</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" required>
+        <button type="submit" th:text="#{signup.submit}">Sign up</button>
+    </form>
+    <p class="auth-actions"><a th:href="@{/signup/verify}" th:text="#{signup.have-code}">I already have a code</a></p>
+</div>
+</body>
+</html>

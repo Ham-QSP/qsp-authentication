@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{mail/layout :: layout(#{mail.code.subject}, ~{::content})}">
+<body>
+<div th:fragment="content">
+    <p th:text="#{mail.code.html.greeting(${callsign})}">Hello F4FEZ,</p>
+    <p th:text="#{mail.code.html.intro}">Your QSP verification code is:</p>
+    <p style="margin:16px 0;font-size:32px;font-weight:700;letter-spacing:6px;font-family:ui-monospace,Menlo,Consolas,monospace;"
+       th:text="${code}">123456</p>
+    <p th:text="#{mail.code.html.validity(${validMinutes})}">It is valid for 15 minutes.</p>
+    <p style="color:#52606d;" th:text="#{mail.code.html.ignore}">If you did not ask for an account, you can ignore this email.</p>
+</div>
+</body>
+</html>

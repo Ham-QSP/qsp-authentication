@@ -14,6 +14,11 @@ FROM eclipse-temurin:25-jre
 # in the base layer. It is gone from the final filesystem, which is what stops
 # it from being executed and from being reported.
 RUN rm -f /usr/bin/pebble
+# Pull in the distro security fixes published since the base image was built
+# (glibc, perl), so the Grype gate in CI does not fail on already-fixed CVEs.
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 # Run as an unprivileged user. The application files stay owned by root, so the
 # process can read them but not modify them.
 RUN groupadd --system qsp && useradd --system --gid qsp --no-create-home --shell /usr/sbin/nologin qsp

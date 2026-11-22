@@ -173,6 +173,30 @@ class PasswordResetRequestTest {
         assertTrue(mailer.codes.isEmpty())
     }
 
+    @Test
+    fun `a purge removes requests and send history older than the retention`() {
+        account("F4RQJ")
+        account("F4RQK")
+        service.request("F4RQJ")
+        service.request("F4RQK")
+        jdbcTemplate.update("update qsp_auth_password_resets set created_at = created_at - interval '25 hours' where upper(username) = 'F4RQJ'")
+        jdbcTemplate.update("update qsp_auth_password_reset_sends set sent_at = sent_at - interval '25 hours' where upper(username) = 'F4RQJ'")
+
+        service.purgeExpired()
+
+        assertEquals(0, pendingRows("F4RQJ"))
+        assertEquals(1, pendingRows("F4RQK"))
+        assertEquals(0, sendRows("F4RQJ"))
+        assertEquals(1, sendRows("F4RQK"))
+    }
+
+    private fun sendRows(callsign: String) =
+        jdbcTemplate.queryForObject(
+            "select count(*) from qsp_auth_password_reset_sends where upper(username) = ?",
+            Int::class.java,
+            callsign,
+        )!!
+
     companion object {
         var postgres: PostgreSQLContainer<*> = PostgreSQLContainer("postgres:17-alpine")
 

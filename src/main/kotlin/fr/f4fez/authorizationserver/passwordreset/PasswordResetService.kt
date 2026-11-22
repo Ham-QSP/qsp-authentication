@@ -146,6 +146,13 @@ class PasswordResetService(
         return ResetResult.Done
     }
 
+    @Transactional
+    fun purgeExpired() {
+        val threshold = now().minus(properties.retention)
+        resets.deleteCreatedBefore(threshold)
+        resets.deleteSendsBefore(threshold)
+    }
+
     /** The mail server failing must not show: it would tell that the account exists. */
     private fun sendCode(
         email: String,

@@ -7,6 +7,7 @@ import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.proc.DefaultJWTProcessor
 import fr.f4fez.authorizationserver.authentication.LoginAttemptLimiter
 import fr.f4fez.authorizationserver.authentication.PasswordExpirationAwareJdbcDao
+import fr.f4fez.authorizationserver.authentication.PromptAwareLoginUrlAuthenticationEntryPoint
 import fr.f4fez.authorizationserver.authentication.ThrottledDaoAuthenticationProvider
 import fr.f4fez.authorizationserver.authorization.CurrentUserTokenCustomizer
 import fr.f4fez.authorizationserver.authorization.CustomRefreshTokenGenerator
@@ -56,7 +57,6 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter
 import org.springframework.security.web.SecurityFilterChain
-import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
@@ -117,7 +117,7 @@ class DefaultSecurityConfig {
                 { exceptions ->
                     exceptions
                         .defaultAuthenticationEntryPointFor(
-                            LoginUrlAuthenticationEntryPoint("/login"),
+                            PromptAwareLoginUrlAuthenticationEntryPoint("/login", "/signup"),
                             MediaTypeRequestMatcher(MediaType.TEXT_HTML),
                         )
                 },

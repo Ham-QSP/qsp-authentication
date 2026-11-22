@@ -54,5 +54,11 @@ class SmtpPasswordResetMailer(
     override fun sendPasswordChanged(
         email: String,
         callsign: String,
-    ): Unit = throw NotImplementedError("Added with the password reset itself")
+    ) = dispatcher.send(
+        email,
+        "mail.changed",
+        "mail/password-changed",
+        mapOf("callsign" to callsign),
+        callsign,
+    )
 }

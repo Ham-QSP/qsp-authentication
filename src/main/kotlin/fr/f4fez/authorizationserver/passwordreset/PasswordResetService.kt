@@ -28,6 +28,13 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+sealed interface ResetResult {
+    data object Done : ResetResult
+
+    /** Wrong code, unknown, expired, used-up or ineligible account: deliberately not told apart. */
+    data object Invalid : ResetResult
+}
+
 /**
  * Password reset by emailed code. Nothing here tells an existing account from an unknown one: the unknown,
  * ineligible, throttled and mail-failing cases return silently after the same amount of work.
@@ -97,6 +104,46 @@ class PasswordResetService(
             ),
         )
         sendCode(user.email, username, code, now)
+    }
+
+    /**
+     * Not transactional as a whole: a wrong attempt must stay counted. The password policy is checked first,
+     * so a weak password neither consumes an attempt nor gives anything away.
+     */
+    fun reset(
+        callsign: String,
+        code: String,
+        newPassword: String,
+    ): ResetResult {
+        val username = Usernames.normalize(callsign)
+        passwordPolicy.requireValid(username, newPassword)
+        val reset = resets.findByNormalizedUsername(username) ?: return ResetResult.Invalid
+        if (reset.codeExpiresAt.isBefore(now())) {
+            return ResetResult.Invalid
+        }
+        val id = reset.id!!
+        if (!resets.reserveAttempt(id, properties.maxAttempts)) {
+            return ResetResult.Invalid
+        }
+        if (!passwordEncoder.matches(code.trim(), reset.codeHash)) {
+            resets.deleteIfAttemptsUsedUp(id, properties.maxAttempts)
+            return ResetResult.Invalid
+        }
+        val user = users.findByNormalizedUsername(username)
+        if (user == null || !user.enabled || !user.emailValidated) {
+            resets.delete(reset)
+            return ResetResult.Invalid
+        }
+
+        userService.resetPassword(user.username, newPassword)
+        resets.delete(reset)
+        loginAttemptLimiter.recordSuccess(username)
+        try {
+            mailer.sendPasswordChanged(user.email, user.username)
+        } catch (e: RuntimeException) {
+            logger.warn("Password changed notice for {} could not be mailed: {}", username, e.message)
+        }
+        return ResetResult.Done
     }
 
     /** The mail server failing must not show: it would tell that the account exists. */

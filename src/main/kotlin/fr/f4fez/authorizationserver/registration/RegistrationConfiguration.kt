@@ -14,11 +14,17 @@ along with this program. If not, see <https://www.gnu.org/licenses/>
  */
 package fr.f4fez.authorizationserver.registration
 
+import fr.f4fez.authorizationserver.passwordreset.PasswordResetProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.EnableScheduling
 
 @Configuration
 @EnableScheduling
-@EnableConfigurationProperties(MailProperties::class, RegistrationProperties::class, SignalingProperties::class)
+@EnableConfigurationProperties(
+    MailProperties::class,
+    RegistrationProperties::class,
+    SignalingProperties::class,
+    PasswordResetProperties::class,
+)
 class RegistrationConfiguration

@@ -14,6 +14,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>
  */
 package fr.f4fez.authorizationserver.passwordreset
 
+import jakarta.mail.MessagingException
 import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Component
 import java.util.concurrent.CopyOnWriteArrayList
@@ -37,6 +38,10 @@ class RecordingPasswordResetMailer : PasswordResetMailer {
     @Volatile
     var failSending = false
 
+    /** Makes the mails fail with a checked exception, as the mail API does for a malformed address. */
+    @Volatile
+    var failWithChecked = false
+
     override fun sendCode(
         email: String,
         callsign: String,
@@ -44,6 +49,7 @@ class RecordingPasswordResetMailer : PasswordResetMailer {
         validMinutes: Long,
     ) {
         check(!failSending) { "Mail server unreachable" }
+        if (failWithChecked) throw MessagingException("Bad address")
         codes += Code(email, callsign, code)
     }
 
@@ -51,6 +57,7 @@ class RecordingPasswordResetMailer : PasswordResetMailer {
         email: String,
         callsign: String,
     ) {
+        if (failWithChecked) throw MessagingException("Bad address")
         changedNotices += email
     }
 
@@ -60,5 +67,6 @@ class RecordingPasswordResetMailer : PasswordResetMailer {
         codes.clear()
         changedNotices.clear()
         failSending = false
+        failWithChecked = false
     }
 }

@@ -23,10 +23,15 @@ import java.security.SecureRandom
 import java.time.Clock
 import java.time.Duration
 import java.time.LocalDateTime
+import java.util.concurrent.Executor
+import java.util.concurrent.RejectedExecutionException
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 
 sealed interface ResetResult {
     data object Done : ResetResult
@@ -50,9 +55,13 @@ class PasswordResetService(
     private val loginAttemptLimiter: LoginAttemptLimiter,
     private val properties: PasswordResetProperties,
     private val clock: Clock,
+    @Qualifier(PasswordResetConfiguration.MAIL_EXECUTOR) private val mailExecutor: Executor,
 ) {
     private val logger = LoggerFactory.getLogger(PasswordResetService::class.java)
     private val random = SecureRandom()
+
+    /** Compared against when there is nothing to check, so that a probe costs the same hashing either way. */
+    private val dummyHash by lazy { passwordEncoder.encode("not-a-real-password")!! }
 
     @Transactional
     fun request(callsign: String) {
@@ -68,24 +77,19 @@ class PasswordResetService(
         if (!withinHourlyLimit(username, user.email, now)) {
             return
         }
-        resets.deleteByNormalizedUsername(username)
-        resets.save(
-            PasswordReset(
-                username = username,
-                codeHash = codeHash,
-                codeExpiresAt = now.plus(properties.codeTtl),
-                lastSentAt = now,
-                createdAt = now,
-            ),
-        )
+        resets.replacePending(username, codeHash, now.plus(properties.codeTtl), now)
         sendCode(user.email, username, code, now)
     }
 
     @Transactional
     fun resend(callsign: String) {
         val username = Usernames.normalize(callsign)
-        val reset = resets.findByNormalizedUsername(username) ?: return
-        val user = users.findByNormalizedUsername(username) ?: return
+        val reset = resets.findByNormalizedUsername(username)
+        val user = users.findByNormalizedUsername(username)
+        if (reset == null || user == null) {
+            passwordEncoder.encode(newCode())
+            return
+        }
         val now = now()
         if (reset.lastSentAt.plus(properties.resendInterval).isAfter(now) ||
             !withinHourlyLimit(username, user.email, now)
@@ -117,13 +121,13 @@ class PasswordResetService(
     ): ResetResult {
         val username = Usernames.normalize(callsign)
         passwordPolicy.requireValid(username, newPassword)
-        val reset = resets.findByNormalizedUsername(username) ?: return ResetResult.Invalid
-        if (reset.codeExpiresAt.isBefore(now())) {
-            return ResetResult.Invalid
+        val reset = resets.findByNormalizedUsername(username)
+        if (reset == null || reset.codeExpiresAt.isBefore(now())) {
+            return invalidAfterHashing(code)
         }
         val id = reset.id!!
         if (!resets.reserveAttempt(id, properties.maxAttempts)) {
-            return ResetResult.Invalid
+            return invalidAfterHashing(code)
         }
         if (!passwordEncoder.matches(code.trim(), reset.codeHash)) {
             resets.deleteIfAttemptsUsedUp(id, properties.maxAttempts)
@@ -138,12 +142,48 @@ class PasswordResetService(
         userService.resetPassword(user.username, newPassword)
         resets.delete(reset)
         loginAttemptLimiter.recordSuccess(username)
-        try {
-            mailer.sendPasswordChanged(user.email, user.username)
-        } catch (e: RuntimeException) {
-            logger.warn("Password changed notice for {} could not be mailed: {}", username, e.message)
-        }
+        deliver("Password changed notice for $username") { mailer.sendPasswordChanged(user.email, user.username) }
         return ResetResult.Done
+    }
+
+    private fun invalidAfterHashing(code: String): ResetResult {
+        passwordEncoder.matches(code.trim(), dummyHash)
+        return ResetResult.Invalid
+    }
+
+    /** Runs the mail after the surrounding transaction commits, on the mail executor; a failure only gets logged. */
+    private fun deliver(
+        description: String,
+        send: () -> Unit,
+    ) {
+        val task =
+            Runnable {
+                try {
+                    send()
+                } catch (e: Exception) {
+                    logger.warn("{} could not be mailed: {}", description, e.message)
+                }
+            }
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(
+                object : TransactionSynchronization {
+                    override fun afterCommit() = submit(description, task)
+                },
+            )
+        } else {
+            submit(description, task)
+        }
+    }
+
+    private fun submit(
+        description: String,
+        task: Runnable,
+    ) {
+        try {
+            mailExecutor.execute(task)
+        } catch (e: RejectedExecutionException) {
+            logger.warn("{} dropped: the mail queue is full", description)
+        }
     }
 
     @Transactional
@@ -153,20 +193,17 @@ class PasswordResetService(
         resets.deleteSendsBefore(threshold)
     }
 
-    /** The mail server failing must not show: it would tell that the account exists. */
     private fun sendCode(
         email: String,
         username: String,
         code: String,
         now: LocalDateTime,
     ) {
-        try {
-            mailer.sendCode(email, username, code, properties.codeTtl.toMinutes())
-        } catch (e: RuntimeException) {
-            logger.warn("Password reset code for {} could not be mailed: {}", username, e.message)
-            return
-        }
+        // Counted before the mail goes out: an outage must not lift the hourly limit
         resets.recordSend(email, username, now)
+        deliver("Password reset code for $username") {
+            mailer.sendCode(email, username, code, properties.codeTtl.toMinutes())
+        }
     }
 
     private fun withinHourlyLimit(

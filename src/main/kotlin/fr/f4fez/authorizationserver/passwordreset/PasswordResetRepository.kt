@@ -28,9 +28,24 @@ interface PasswordResetRepository : CrudRepository<PasswordReset, UUID> {
     @Query("select * from qsp_auth_password_resets where upper(username) = :username")
     fun findByNormalizedUsername(username: String): PasswordReset?
 
+    /**
+     * Stores the one pending request of the account, replacing the previous one. A single statement: parallel
+     * requests for the same account cannot collide on the unique index.
+     */
     @Modifying
-    @Query("delete from qsp_auth_password_resets where upper(username) = :username")
-    fun deleteByNormalizedUsername(username: String)
+    @Query(
+        "insert into qsp_auth_password_resets (username, code_hash, code_expires_at, failed_attempts, last_sent_at, created_at) " +
+            "values (:username, :codeHash, :codeExpiresAt, 0, :now, :now) " +
+            "on conflict (upper(username)) do update set code_hash = excluded.code_hash, " +
+            "code_expires_at = excluded.code_expires_at, failed_attempts = 0, " +
+            "last_sent_at = excluded.last_sent_at, created_at = excluded.created_at",
+    )
+    fun replacePending(
+        username: String,
+        codeHash: String,
+        codeExpiresAt: LocalDateTime,
+        now: LocalDateTime,
+    )
 
     /**
      * Atomically takes one verification attempt; false when the attempts are used up. Taken before the code is

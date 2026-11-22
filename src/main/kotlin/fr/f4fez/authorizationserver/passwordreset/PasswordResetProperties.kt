@@ -24,4 +24,7 @@ class PasswordResetProperties {
     var maxSendsPerHour: Int = 3
     var resendInterval: Duration = Duration.ofSeconds(60)
     var retention: Duration = Duration.ofHours(24)
+
+    /** Mails go out on a background thread, so the response time does not tell whether a mail was sent. */
+    var asyncMail: Boolean = true
 }

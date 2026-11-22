@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(#{forgot.verify.title}, ~{::content})}">
+<body>
+<div th:fragment="content">
+    <p th:text="#{forgot.verify.intro}">Enter the 6-digit code sent to your email address and choose a new password.</p>
+    <th:block th:if="${error}"><th:block th:replace="~{fragments/layout :: alert('error', ${error})}"></th:block></th:block>
+    <th:block th:if="${info}"><th:block th:replace="~{fragments/layout :: alert('info', ${info})}"></th:block></th:block>
+    <form method="post" th:action="@{/password/forgot/verify}" class="auth-form">
+        <label for="callsign" th:text="#{signup.callsign}">Callsign</label>
+        <input type="text" id="callsign" name="callsign" th:value="${callsign}" autocomplete="username" autocapitalize="characters" required>
+        <label for="code" th:text="#{signup.verify.code}">Code</label>
+        <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" autofocus required>
+        <label for="password" th:text="#{forgot.password}">New password</label>
+        <input type="password" id="password" name="password" autocomplete="new-password" required>
+        <label for="confirmPassword" th:text="#{signup.confirm-password}">Confirm password</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" required>
+        <button type="submit" th:text="#{forgot.verify.submit}">Change the password</button>
+        <button type="submit" th:formaction="@{/password/forgot/resend}" formnovalidate th:text="#{signup.verify.resend}">Send a new code</button>
+    </form>
+</div>
+</body>
+</html>

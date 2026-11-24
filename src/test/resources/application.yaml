@@ -30,3 +30,6 @@ qsp.password-policy:
 
 # No signaling service in the tests: registration tests that do not care fail fast and only log
 qsp.signaling.base-url: http://localhost:1
+
+qsp.password-reset:
+  async-mail: false

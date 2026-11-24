@@ -19,6 +19,10 @@ spring:
           auth: false
           starttls:
             enable: false
+          # A mail server that hangs must not hold a thread forever
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
 
 logging:
   level:

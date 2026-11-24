@@ -22,6 +22,24 @@ Start the application with:
 mvn spring-boot:run -f pom.xml
 ```
 
+# Forgotten password
+
+The login page links to `/password/forgot`. The user gives their callsign and, if the account is enabled and has a
+validated email, a 6-digit code is mailed to it. The code and a new password are then entered on the next page.
+Nothing tells an existing account from an unknown one. The mail server is configured with the standard Spring
+properties (`SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`) and the sender
+with `qsp.mail.from`; it is the same one as for the self-registration.
+
+Settings, with their defaults:
+
+| Property | Default | Meaning |
+|---|---|---|
+| `qsp.password-reset.code-ttl` | `15m` | Lifetime of a code |
+| `qsp.password-reset.max-attempts` | `5` | Wrong codes before the request is cancelled |
+| `qsp.password-reset.max-sends-per-hour` | `3` | Codes per hour, per callsign and per email |
+| `qsp.password-reset.resend-interval` | `60s` | Minimum delay between two sends for one request |
+| `qsp.password-reset.retention` | `24h` | Age after which requests and send history are purged |
+
 # CI/CD pipeline
 
 The GitHub Actions workflow is defined in `.github/workflows/ci.yaml`.

@@ -12,6 +12,7 @@
         <input type="password" id="password" name="password" autocomplete="current-password" required>
         <button type="submit" th:text="#{login.submit}">Sign in</button>
     </form>
+    <p class="auth-actions"><a th:href="@{/password/forgot}" th:text="#{login.forgot}">Forgot your password?</a></p>
 </div>
 </body>
 </html>

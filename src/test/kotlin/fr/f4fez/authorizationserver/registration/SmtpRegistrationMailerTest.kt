@@ -55,18 +55,20 @@ class SmtpRegistrationMailerTest {
 
     private fun mailer(available: JavaMailSender? = sender) =
         SmtpRegistrationMailer(
-            object : ObjectProvider<JavaMailSender> {
-                override fun getObject() = available ?: throw IllegalStateException()
+            MailDispatcher(
+                object : ObjectProvider<JavaMailSender> {
+                    override fun getObject() = available ?: throw IllegalStateException()
 
-                override fun getObject(vararg args: Any?) = getObject()
+                    override fun getObject(vararg args: Any?) = getObject()
 
-                override fun getIfAvailable() = available
+                    override fun getIfAvailable() = available
 
-                override fun getIfUnique() = available
-            },
-            messages,
-            templates,
-            properties,
+                    override fun getIfUnique() = available
+                },
+                messages,
+                templates,
+                properties,
+            ),
         )
 
     private fun sent(): MimeMessage {

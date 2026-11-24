@@ -142,6 +142,7 @@ class DefaultSecurityConfig {
                         "/css/**",
                         "/login",
                         "/signup/**",
+                        "/password/forgot/**",
                         "/error",
                     ).permitAll()
                     .requestMatchers("/users/@me", "/users/@me/password")

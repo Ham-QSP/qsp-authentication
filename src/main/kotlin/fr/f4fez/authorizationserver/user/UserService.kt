@@ -160,6 +160,12 @@ class UserService(
         storePassword(user, request.newPassword)
     }
 
+    /** Replaces the password of [username] without asking for the current one: the caller has proved who they are. */
+    fun resetPassword(
+        username: String,
+        newPassword: String,
+    ) = storePassword(findByUsername(username), newPassword)
+
     fun renewExpiredPassword(
         username: String,
         newPassword: String,

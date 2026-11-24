@@ -88,7 +88,11 @@ class PasswordResetHardeningTest {
     fun resetMailer() = mailer.reset()
 
     private fun account(callsign: String) =
-        userService.createValidated(callsign, "${callsign.lowercase()}@example.org", passwordEncoder.encode(oldPassword)!!)
+        userService.createValidated(
+            callsign,
+            "${callsign.lowercase()}@example.org",
+            passwordEncoder.encode(oldPassword)!!,
+        )
 
     private fun sendRows(callsign: String) =
         jdbcTemplate.queryForObject(
@@ -120,7 +124,18 @@ class PasswordResetHardeningTest {
     private fun serviceWith(
         encoder: PasswordEncoder,
         executor: Executor,
-    ) = PasswordResetService(users, userService, encoder, passwordPolicy, resets, mailer, loginAttemptLimiter, properties, clock, executor)
+    ) = PasswordResetService(
+        users,
+        userService,
+        encoder,
+        passwordPolicy,
+        resets,
+        mailer,
+        loginAttemptLimiter,
+        properties,
+        clock,
+        executor,
+    )
 
     @Test
     fun `the code mail goes out on the mail executor, not on the request path`() {
@@ -159,7 +174,13 @@ class PasswordResetHardeningTest {
             pool.shutdown()
         }
 
-        assertEquals(1, jdbcTemplate.queryForObject("select count(*) from qsp_auth_password_resets where upper(username) = 'F4RHA'", Int::class.java))
+        assertEquals(
+            1,
+            jdbcTemplate.queryForObject(
+                "select count(*) from qsp_auth_password_resets where upper(username) = 'F4RHA'",
+                Int::class.java,
+            ),
+        )
     }
 
     @Test

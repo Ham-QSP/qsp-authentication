@@ -34,7 +34,8 @@ interface PasswordResetRepository : CrudRepository<PasswordReset, UUID> {
      */
     @Modifying
     @Query(
-        "insert into qsp_auth_password_resets (username, code_hash, code_expires_at, failed_attempts, last_sent_at, created_at) " +
+        "insert into qsp_auth_password_resets " +
+            "(username, code_hash, code_expires_at, failed_attempts, last_sent_at, created_at) " +
             "values (:username, :codeHash, :codeExpiresAt, 0, :now, :now) " +
             "on conflict (upper(username)) do update set code_hash = excluded.code_hash, " +
             "code_expires_at = excluded.code_expires_at, failed_attempts = 0, " +

@@ -19,12 +19,6 @@ import fr.f4fez.authorizationserver.user.PasswordPolicy
 import fr.f4fez.authorizationserver.user.UserRepository
 import fr.f4fez.authorizationserver.user.UserService
 import fr.f4fez.authorizationserver.user.Usernames
-import java.security.SecureRandom
-import java.time.Clock
-import java.time.Duration
-import java.time.LocalDateTime
-import java.util.concurrent.Executor
-import java.util.concurrent.RejectedExecutionException
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -32,6 +26,12 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
+import java.security.SecureRandom
+import java.time.Clock
+import java.time.Duration
+import java.time.LocalDateTime
+import java.util.concurrent.Executor
+import java.util.concurrent.RejectedExecutionException
 
 sealed interface ResetResult {
     data object Done : ResetResult

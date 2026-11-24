@@ -83,7 +83,11 @@ class PasswordResetPagesTest {
     fun resetMailer() = mailer.reset()
 
     private fun account(callsign: String) =
-        userService.createValidated(callsign, "${callsign.lowercase()}@example.org", passwordEncoder.encode(oldPassword)!!)
+        userService.createValidated(
+            callsign,
+            "${callsign.lowercase()}@example.org",
+            passwordEncoder.encode(oldPassword)!!,
+        )
 
     private fun csrf(
         path: String,

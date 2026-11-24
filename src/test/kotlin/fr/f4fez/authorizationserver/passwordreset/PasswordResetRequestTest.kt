@@ -179,8 +179,12 @@ class PasswordResetRequestTest {
         account("F4RQK")
         service.request("F4RQJ")
         service.request("F4RQK")
-        jdbcTemplate.update("update qsp_auth_password_resets set created_at = created_at - interval '25 hours' where upper(username) = 'F4RQJ'")
-        jdbcTemplate.update("update qsp_auth_password_reset_sends set sent_at = sent_at - interval '25 hours' where upper(username) = 'F4RQJ'")
+        jdbcTemplate.update(
+            "update qsp_auth_password_resets set created_at = created_at - interval '25 hours' where upper(username) = 'F4RQJ'",
+        )
+        jdbcTemplate.update(
+            "update qsp_auth_password_reset_sends set sent_at = sent_at - interval '25 hours' where upper(username) = 'F4RQJ'",
+        )
 
         service.purgeExpired()
 

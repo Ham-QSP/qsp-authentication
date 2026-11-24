@@ -78,7 +78,11 @@ class PasswordResetVerifyTest {
     fun resetMailer() = mailer.reset()
 
     private fun ask(callsign: String): String {
-        userService.createValidated(callsign, "${callsign.lowercase()}@example.org", passwordEncoder.encode(oldPassword)!!)
+        userService.createValidated(
+            callsign,
+            "${callsign.lowercase()}@example.org",
+            passwordEncoder.encode(oldPassword)!!,
+        )
         service.request(callsign)
         return mailer.lastCodeFor(callsign)!!
     }
@@ -133,7 +137,9 @@ class PasswordResetVerifyTest {
     @Test
     fun `an unknown callsign, an expired code and an ineligible account are all invalid`() {
         val expired = ask("F4RVE")
-        jdbcTemplate.update("update qsp_auth_password_resets set code_expires_at = code_expires_at - interval '1 hour' where upper(username) = 'F4RVE'")
+        jdbcTemplate.update(
+            "update qsp_auth_password_resets set code_expires_at = code_expires_at - interval '1 hour' where upper(username) = 'F4RVE'",
+        )
         val disabled = ask("F4RVF")
         jdbcTemplate.update("update qsp_auth_users set enabled = false where upper(username) = 'F4RVF'")
 
@@ -188,7 +194,9 @@ class PasswordResetVerifyTest {
     @Test
     fun `a reset also clears a password expiration`() {
         val code = ask("F4RVJ")
-        jdbcTemplate.update("update qsp_auth_users set password_expiration = now() - interval '1 day' where upper(username) = 'F4RVJ'")
+        jdbcTemplate.update(
+            "update qsp_auth_users set password_expiration = now() - interval '1 day' where upper(username) = 'F4RVJ'",
+        )
 
         service.reset("F4RVJ", code, newPassword)
 

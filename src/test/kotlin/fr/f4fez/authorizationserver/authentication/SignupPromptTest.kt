@@ -14,9 +14,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>
  */
 package fr.f4fez.authorizationserver.authentication
 
-import org.junit.jupiter.api.AfterAll
 import fr.f4fez.authorizationserver.user.CreateUserRequest
 import fr.f4fez.authorizationserver.user.UserService
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
@@ -90,11 +90,17 @@ class SignupPromptTest {
 
     @Test
     fun `signing in after the signup resumes the authorization request and returns a code`() {
-        userService.create(CreateUserRequest(username = "signup_prompt", password = "secret", email = "signup_prompt@localhost"))
+        userService.create(
+            CreateUserRequest(username = "signup_prompt", password = "secret", email = "signup_prompt@localhost"),
+        )
         val session = MockHttpSession()
         authorize(session, "create").andExpect(redirectedUrl("/signup"))
 
-        val loginPage = mockMvc.perform(get("/login").session(session)).andReturn().response.contentAsString
+        val loginPage =
+            mockMvc
+                .perform(get("/login").session(session))
+                .andReturn()
+                .response.contentAsString
         val csrf = Regex("""name="_csrf"[^>]*value="([^"]+)"""").find(loginPage)!!.groupValues[1]
         val resumed =
             mockMvc
@@ -110,8 +116,15 @@ class SignupPromptTest {
                 .response.redirectedUrl!!
 
         assertTrue(resumed.contains("/oauth2/authorize"), "Resumed $resumed")
-        val redirect = mockMvc.perform(get(resumed).session(session)).andReturn().response.redirectedUrl!!
-        assertTrue(redirect.startsWith("http://localhost:3000") && redirect.contains("code="), "Redirected to $redirect")
+        val redirect =
+            mockMvc
+                .perform(get(resumed).session(session))
+                .andReturn()
+                .response.redirectedUrl!!
+        assertTrue(
+            redirect.startsWith("http://localhost:3000") && redirect.contains("code="),
+            "Redirected to $redirect",
+        )
     }
 
     companion object {
